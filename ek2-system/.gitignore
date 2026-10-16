@@ -1,0 +1,12 @@
+/vendor
+/node_modules
+.env
+/storage/*.key
+/storage/logs/*
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+/storage/app/private/*
+/storage/ocr_aktarim
+/ocr_aktarim
+!/storage/app/private/.gitignore

@@ -1,0 +1,1 @@
+@extends('layouts.base') @section('body')<div class="wrap"><a href="{{ route('admin.workplaces.index') }}">← İşyerleri</a><h1>İşyeri Ekle</h1><div class="card"><form method="post" action="{{ route('admin.workplaces.store') }}">@include('admin.workplaces.form')</form></div></div>@endsection

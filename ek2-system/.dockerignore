@@ -1,0 +1,9 @@
+.env
+.git
+vendor
+node_modules
+storage/app/private/*
+storage/logs/*
+storage/framework/*/*
+storage/ocr_aktarim
+ocr_aktarim
