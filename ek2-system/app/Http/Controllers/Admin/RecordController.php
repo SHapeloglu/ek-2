@@ -8,7 +8,11 @@ use App\Rules\TcKimlikNo;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 class RecordController extends Controller {
-    public function index(){ $records=Ek2Record::with(['doctor','workplace'])->latest()->paginate(50); return view('admin.records.index',compact('records')); }
+    public function index(Request $request){
+        $eksikMi=$request->boolean('eksik');
+        $records=Ek2Record::with(['doctor','workplace'])->when($eksikMi,fn($q)=>$q->eksik())->ara($request->input('q'))->latest()->paginate(50)->withQueryString();
+        return view('admin.records.index',compact('records','eksikMi'));
+    }
     public function show(Ek2Record $record){
         AuditLog::kaydet('kayit_goruntule',$record);
         $logs=AuditLog::with('user')->where('entity_type','ek2_records')->where('entity_id',$record->id)->latest('created_at')->limit(50)->get();

@@ -11,7 +11,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 class RecordController extends Controller {
-    public function index(){ $records=Ek2Record::with('workplace')->where('doctor_id',auth()->id())->latest()->paginate(30); return view('doctor.records.index',compact('records')); }
+    public function index(Request $request){
+        $eksikMi=$request->boolean('eksik'); $eksikSayi=Ek2Record::where('doctor_id',auth()->id())->eksik()->count();
+        $records=Ek2Record::with('workplace')->where('doctor_id',auth()->id())->when($eksikMi,fn($q)=>$q->eksik())->ara($request->input('q'))->latest()->paginate(30)->withQueryString();
+        return view('doctor.records.index',compact('records','eksikMi','eksikSayi'));
+    }
     public function create(){ $workplaces=Workplace::where('is_active',true)->orderBy('name')->get(['id','name']); return view('doctor.records.create',compact('workplaces')); }
     public function store(Request $request){
         $data=$request->validate([

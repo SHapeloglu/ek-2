@@ -32,6 +32,15 @@ class Ek2Record extends Model
         abort_unless($path && Storage::disk('local')->exists($path),404);
         return response()->file(Storage::disk('local')->path($path),['Cache-Control'=>'private, no-store']);
     }
+    // Doktorun tamamlaması gereken kayıtlar: sayfası eksik ya da yeniden çekilmesi istenen (iptal edilmemiş)
+    public function scopeEksik($q) { return $q->where('status','!=','cancelled')->where(fn($q)=>$q->whereNull('front_path')->orWhereNull('back_path')->orWhereNotNull('retake_pages')); }
+    // Ad / soyad (Türkçe harf duyarsız: İ=i, I=ı), TC başı ya da OCR form adı ile arama
+    public function scopeAra($q, ?string $s) {
+        $s=trim((string)$s); if ($s==='') return $q;
+        if (preg_match('/^\d+$/',$s)) return $q->where('tc_kimlik_no','like',$s.'%');
+        $like='%'.addcslashes($s,'%_\\').'%';
+        return $q->where(fn($q)=>$q->whereRaw("CONCAT(first_name,' ',last_name) COLLATE utf8mb4_turkish_ci LIKE ?",[$like])->orWhere('legacy_form_id','like',$like));
+    }
     protected static function booted(): void {
         static::creating(function (Ek2Record $record) { if (!$record->uuid) $record->uuid = (string) Str::uuid(); });
     }
