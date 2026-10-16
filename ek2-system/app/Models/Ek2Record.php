@@ -42,6 +42,24 @@ class Ek2Record extends Model
         $like='%'.addcslashes($s,'%_\\').'%';
         return $q->where(fn($q)=>$q->whereRaw("CONCAT(first_name,' ',last_name) COLLATE utf8mb4_turkish_ci LIKE ?",[$like])->orWhere('legacy_form_id','like',$like));
     }
+    // Sayfayı 90° çevirir. Önce kayıpsız: yalnız EXIF yön etiketi değişir (pikseller, GPS ve cihaz bilgisi korunur);
+    // etiket yoksa ya da aynalıysa GD ile yeniden kaydeder. Orijinal silinmez, yeni sürüm aynı klasöre yazılır ve kayıt ona geçer.
+    public function rotatePage(string $side, string $yon): void {
+        abort_unless(in_array($side,['front','back'],true) && in_array($yon,['sol','sag'],true),404);
+        $col=$side==='front'?'front_path':'back_path'; abort_unless($this->$col,404);
+        $disk=Storage::disk('local'); $kaynak=$disk->path($this->$col);
+        $yol=dirname($this->$col).'/'.$side.'-'.now()->format('Ymd-His').'-dondu.jpeg'; $hedef=$disk->path($yol);
+        $bayt=file_get_contents($kaynak); $yeniBayt=\App\Support\ExifYon::dondur($bayt,$yon==='sag');
+        if ($yeniBayt!==null) { abort_unless(file_put_contents($hedef,$yeniBayt)!==false,500,'Döndürülen fotoğraf yazılamadı.'); }
+        else {
+            $img=@imagecreatefromstring($bayt); abort_unless($img,422,'Fotoğraf okunamadı.');
+            $o=(int)(@exif_read_data($kaynak,'IFD0')['Orientation'] ?? 1);
+            $aci=([3=>180,6=>-90,8=>90][$o] ?? 0)+($yon==='sol'?90:-90); // imagerotate saat yönünün tersine döndürür
+            if ($aci%360!==0) { $y=imagerotate($img,$aci,0); imagedestroy($img); $img=$y; }
+            abort_unless(imagejpeg($img,$hedef,95),500,'Döndürülen fotoğraf yazılamadı.'); imagedestroy($img);
+        }
+        $this->update([$col=>$yol,'ocr_status'=>$this->ocr_status==='aktarildi' ? 'bekliyor' : $this->ocr_status]);
+    }
     protected static function booted(): void {
         static::creating(function (Ek2Record $record) { if (!$record->uuid) $record->uuid = (string) Str::uuid(); });
     }

@@ -53,5 +53,6 @@ class RecordController extends Controller {
         $record->update($upd+['ocr_status'=>'bekliyor']); AuditLog::kaydet($retake?'sayfa_yeniden_cek':'sayfa_ekle',$record,['sayfa'=>$side]);
         return redirect()->route('doctor.records.show',$record)->with('ok',($side==='front'?'Ön':'Arka').($retake?' sayfa yeniden çekildi.':' sayfa eklendi.'));
     }
+    public function rotate(Ek2Record $record,string $side,string $yon){ $this->authorizeRecord($record); abort_if($record->status==='cancelled',403); $record->rotatePage($side,$yon); AuditLog::kaydet('sayfa_dondur',$record,['sayfa'=>$side,'yon'=>$yon]); return redirect()->route('doctor.records.show',$record)->with('ok','Sayfa döndürüldü.'); }
     private function authorizeRecord(Ek2Record $record): void { abort_unless($record->doctor_id===auth()->id(),403); }
 }

@@ -48,6 +48,7 @@ class RecordController extends Controller {
         AuditLog::kaydet('yeniden_cekim_isaretle',$record,['sayfalar'=>$pages,'not'=>$data['retake_note'] ?? null]);
         return redirect()->route('admin.records.show',$record)->with('ok',$pages?'Doktordan yeniden çekim istendi.':'Yeniden çekim isteği kaldırıldı.');
     }
+    public function rotate(Ek2Record $record,string $side,string $yon){ abort_if($record->status==='cancelled',403); $record->rotatePage($side,$yon); AuditLog::kaydet('sayfa_dondur',$record,['sayfa'=>$side,'yon'=>$yon]); return redirect()->route('admin.records.show',$record)->with('ok','Sayfa döndürüldü.'); }
     public function cancel(Request $request, Ek2Record $record){
         abort_if($record->status==='cancelled',403,'Kayıt zaten iptal.');
         $data=$request->validate(['cancel_reason'=>['required','string','max:500']]);
