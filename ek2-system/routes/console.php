@@ -30,6 +30,7 @@ Artisan::command('ek2:ocr-aktar {--limit=200} {--tekrar-dene : hata durumundaki 
                 $r->update(['ocr_status'=>'aktarildi','ocr_exported_at'=>now(),'ocr_error'=>null]);
                 AuditLog::kaydet('ocr_iptal_aktar',$r); $ok++; continue;
             }
+            if (is_file("{$hedef}/{$r->uuid}.iptal.json")) unlink("{$hedef}/{$r->uuid}.iptal.json"); // aktife alınmış kayıt
             $sayfalar = [];
             foreach (['1'=>$r->front_path,'2'=>$r->back_path] as $no=>$yol) {
                 if (!$yol || !$disk->exists($yol)) throw new RuntimeException("sayfa {$no} dosyası bulunamadı");
@@ -109,6 +110,6 @@ Artisan::command('ek2:muayene-tarihi-al {dosya} {--kaynak=ocr}', function () {
         if (!$r || $r->exam_date_source === 'elle' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) ($x['tarih'] ?? ''))) { $atla++; continue; }
         $r->update(['exam_date'=>$x['tarih'],'exam_date_source'=>$kaynak]); $yeni++;
     }
-    $m = Ek2Record::mukerrer()->count();
-    $this->info("Muayene tarihi: {$yeni} kayda yazıldı, {$atla} atlandı. Mükerrer şüphesi olan kayıt: {$m}.");
+    $p = Ek2Record::mukerrerleriPasifeAl();
+    $this->info("Muayene tarihi: {$yeni} kayda yazıldı, {$atla} atlandı. Mükerrer olarak pasife düşen: {$p}.");
 })->purpose('Muayene tarihini OCR etiketinden / sonucundan alır');

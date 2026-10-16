@@ -25,7 +25,7 @@ class Ek2Record extends Model
     public function getDeviceLabelAttribute(): ?string { $m=trim(($this->device_make ?? '').' '.($this->device_model ?? '')); return $m!=='' ? $m : null; }
     public function getSourceLabelAttribute(): string { return $this->source==='tarama' ? 'Taranmış (eski)' : 'Telefon'; }
     public function getMapUrlAttribute(): ?string { return $this->latitude===null ? null : "https://www.openstreetmap.org/?mlat={$this->latitude}&mlon={$this->longitude}#map=18/{$this->latitude}/{$this->longitude}"; }
-    public function getStatusLabelAttribute(): string { return ['draft'=>'Taslak','completed'=>'Tamamlandı','cancelled'=>'İptal'][$this->status] ?? $this->status; }
+    public function getStatusLabelAttribute(): string { return ['draft'=>'Taslak','completed'=>'Tamamlandı','cancelled'=>'Pasif'][$this->status] ?? $this->status; }
     public function getOcrLabelAttribute(): string { return ['bekliyor'=>'Bekliyor','aktarildi'=>'Aktarıldı','hata'=>'Hata'][$this->ocr_status] ?? $this->ocr_status; }
     // Fotoğraf yalnız yetki kontrolünden sonra controller üzerinden verilir; tarayıcı önbelleğe almaz
     public function imageResponse(string $side): BinaryFileResponse {
@@ -69,6 +69,20 @@ class Ek2Record extends Model
     public function scopeTcCakisma($q) {
         return $q->where('status','!=','cancelled')->where('tc_kimlik_no','!=','')
             ->whereRaw("tc_kimlik_no IN (SELECT tc_kimlik_no FROM ek2_records WHERE status <> 'cancelled' AND tc_kimlik_no <> '' GROUP BY tc_kimlik_no HAVING COUNT(DISTINCT LOWER(CONCAT(TRIM(first_name),' ',TRIM(last_name))) COLLATE utf8mb4_turkish_ci) > 1)");
+    }
+    // Aynı TC + aynı muayene tarihli aktif kayıtlardan ilk yükleneni (en küçük id) aktif kalır, diğerleri pasife düşer.
+    // Pasif geri alınabilir; admin inceledikten sonra siler. $tercih: admin'in aktife aldığı kayıt, kendi grubunda o kalır.
+    public static function mukerrerleriPasifeAl(?int $tercih=null): int {
+        $n=0;
+        foreach (static::mukerrer()->orderBy('id')->get()->groupBy(fn($r)=>$r->tc_kimlik_no.'|'.$r->exam_date->toDateString()) as $grup) {
+            $ilk=$grup->firstWhere('id',$tercih) ?? $grup->first();
+            foreach ($grup->where('id','!=',$ilk->id) as $r) {
+                $r->update(['status'=>'cancelled','cancelled_at'=>now(),'cancel_reason'=>"Mükerrer: #{$ilk->id} ile aynı TC ve onay tarihi ({$r->exam_date->format('d.m.Y')}) — otomatik",
+                    'ocr_status'=>$r->ocr_status==='aktarildi'?'bekliyor':$r->ocr_status]);
+                AuditLog::kaydet('otomatik_pasif',$r,['mukerrer_ile'=>$ilk->id]); $n++;
+            }
+        }
+        return $n;
     }
     /** Aynı kişinin (TC) diğer kayıtları */
     public function digerKayitlar() { return $this->tc_kimlik_no==='' ? collect() : static::with('workplace')->where('tc_kimlik_no',$this->tc_kimlik_no)->where('id','!=',$this->id)->orderByDesc('exam_date')->orderByDesc('created_at')->get(); }

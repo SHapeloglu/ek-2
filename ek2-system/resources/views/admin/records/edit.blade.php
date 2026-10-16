@@ -4,5 +4,5 @@
 <div class="grid" style="grid-template-columns:1fr 1fr"><div><label>Ad</label><input name="first_name" required value="{{ old('first_name',$record->first_name) }}"></div><div><label>Soyad</label><input name="last_name" required value="{{ old('last_name',$record->last_name) }}"></div></div><br>
 <label>Muayene (onay) tarihi</label><input type="date" name="exam_date" value="{{ old('exam_date',$record->exam_date?->format('Y-m-d')) }}"><br><br>
 <label>Düzeltme notu (erişim kaydına yazılır)</label><input name="note" required maxlength="500" value="{{ old('note') }}" placeholder="Örn. TC yanlış girilmiş, kimlikten kontrol edildi"><br><br>
-<p class="muted">Fotoğraf okunmuyorsa düzeltme yerine kaydı iptal edin; doktor yeni kayıt açar.</p>
+<p class="muted">Fotoğraf okunmuyorsa düzeltme yerine kaydı pasife alın; doktor yeni kayıt açar.</p>
 @foreach($errors->all() as $e)<div class="err">{{ $e }}</div>@endforeach<button class="btn">Kaydet</button></form></div></div>@endsection

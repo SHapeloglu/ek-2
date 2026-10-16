@@ -23,6 +23,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth','role:admin'])->group
     Route::get('records/{record}/edit',[AdminRecordController::class,'edit'])->name('records.edit');
     Route::put('records/{record}',[AdminRecordController::class,'update'])->name('records.update');
     Route::post('records/{record}/cancel',[AdminRecordController::class,'cancel'])->name('records.cancel');
+    Route::post('records/{record}/activate',[AdminRecordController::class,'activate'])->name('records.activate');
+    Route::delete('records/{record}',[AdminRecordController::class,'destroy'])->name('records.destroy');
     Route::post('records/{record}/rotate/{side}/{yon}',[AdminRecordController::class,'rotate'])->name('records.rotate');
     Route::post('records/{record}/retake',[AdminRecordController::class,'retake'])->name('records.retake');
     Route::get('audit',[AuditController::class,'index'])->name('audit.index');
