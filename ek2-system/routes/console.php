@@ -1,6 +1,7 @@
 <?php
 use App\Models\AuditLog;
 use App\Models\Ek2Record;
+use App\Support\Konum;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
@@ -41,6 +42,7 @@ Artisan::command('ek2:ocr-aktar {--limit=200} {--tekrar-dene : hata durumundaki 
                 'isyeri'=>['id'=>$r->workplace->id, 'ad'=>$r->workplace->name, 'sgk_sicil_no'=>$r->workplace->sgk_sicil_no, 'adres'=>$r->workplace->address],
                 'doktor'=>['id'=>$r->doctor->id, 'ad_soyad'=>trim($r->doctor->name.' '.$r->doctor->surname)],
                 'yukleme_zamani'=>$r->completed_at?->toIso8601String(),
+                'konum'=>$r->latitude===null ? null : ['enlem'=>$r->latitude,'boylam'=>$r->longitude,'kaynak'=>$r->location_source,'dogruluk_m'=>$r->location_accuracy_m,'adres'=>$r->address],
             ];
             $json = json_encode($kunye, JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR);
             if (file_put_contents("{$hedef}/.{$r->uuid}.json.tmp", $json) === false || !rename("{$hedef}/.{$r->uuid}.json.tmp", "{$hedef}/{$r->uuid}.json")) throw new RuntimeException('künye yazılamadı');
@@ -53,3 +55,18 @@ Artisan::command('ek2:ocr-aktar {--limit=200} {--tekrar-dene : hata durumundaki 
     $this->info("OCR aktarımı: {$ok} kayıt aktarıldı, {$hata} hata. Hedef: {$hedef}");
     return $hata ? 1 : 0;
 })->purpose('Tamamlanmış EK-2 kayıtlarını OCR giriş klasörüne aktarır');
+
+// Konumu olmayan kayıtlarda fotoğraf EXIF'inden GPS okur; adresi çözülmemiş kayıtları Nominatim ile adrese çevirir
+// (Nominatim kuralı: saniyede en fazla 1 istek). Adres yeni çözülen ve OCR'a gitmiş kayıt yeniden aktarılır.
+Artisan::command('ek2:konum {--limit=50}', function () {
+    $disk = Storage::disk('local'); $exif = 0; $adres = 0;
+    foreach (Ek2Record::whereNull('latitude')->where('status','!=','draft')->orderBy('id')->limit((int) $this->option('limit'))->get() as $r) {
+        $k = ($r->front_path && $disk->exists($r->front_path) ? Konum::exif($disk->path($r->front_path)) : null) ?? ($r->back_path && $disk->exists($r->back_path) ? Konum::exif($disk->path($r->back_path)) : null);
+        if ($k) { $r->update(['latitude'=>$k['lat'],'longitude'=>$k['lon'],'location_source'=>'exif']); $exif++; }
+    }
+    foreach (Ek2Record::whereNotNull('latitude')->whereNull('address')->orderBy('id')->limit((int) $this->option('limit'))->get() as $i => $r) {
+        if ($i) usleep(1100000);
+        if ($a = Konum::adres($r->latitude, $r->longitude)) { $r->update(['address'=>$a,'address_at'=>now(),'ocr_status'=>$r->ocr_status==='aktarildi'?'bekliyor':$r->ocr_status]); $adres++; }
+    }
+    $this->info("Konum: {$exif} kayda EXIF'ten konum, {$adres} kayda adres eklendi.");
+})->purpose('EK-2 kayıtlarına fotoğraf GPS konumu ve adres ekler');
