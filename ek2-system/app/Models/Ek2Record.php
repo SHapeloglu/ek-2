@@ -9,7 +9,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class Ek2Record extends Model
 {
-    protected $fillable = ['doctor_id','workplace_id','source','legacy_form_id','review_note','retake_pages','retake_note','tc_kimlik_no','first_name','last_name','front_path','back_path','latitude','longitude','location_source','location_accuracy_m','address','address_at','status','completed_at','cancelled_at','cancel_reason','ocr_status','ocr_exported_at','ocr_error'];
+    protected $fillable = ['doctor_id','workplace_id','source','legacy_form_id','review_note','retake_pages','retake_note','tc_kimlik_no','first_name','last_name','front_path','back_path','latitude','longitude','location_source','location_accuracy_m','address','address_at','device_make','device_model','device_user_agent','status','completed_at','cancelled_at','cancel_reason','ocr_status','ocr_exported_at','ocr_error'];
     protected $hidden = ['tc_kimlik_no'];
     protected function casts(): array { return ['completed_at'=>'datetime','cancelled_at'=>'datetime','address_at'=>'datetime','retake_pages'=>'array','latitude'=>'float','longitude'=>'float','ocr_exported_at'=>'datetime']; }
     public function doctor(): BelongsTo { return $this->belongsTo(User::class, 'doctor_id'); }
@@ -22,6 +22,7 @@ class Ek2Record extends Model
     public function getMissingPagesAttribute(): array { return array_keys(array_filter(['ön'=>!$this->front_path,'arka'=>!$this->back_path])); }
     /** @return string[] yeniden çekilmesi istenen sayfalar: 'ön' / 'arka' */
     public function getRetakeLabelsAttribute(): array { return array_values(array_map(fn($s)=>$s==='front'?'ön':'arka', $this->retake_pages ?? [])); }
+    public function getDeviceLabelAttribute(): ?string { $m=trim(($this->device_make ?? '').' '.($this->device_model ?? '')); return $m!=='' ? $m : null; }
     public function getSourceLabelAttribute(): string { return $this->source==='tarama' ? 'Taranmış (eski)' : 'Telefon'; }
     public function getMapUrlAttribute(): ?string { return $this->latitude===null ? null : "https://www.openstreetmap.org/?mlat={$this->latitude}&mlon={$this->longitude}#map=18/{$this->latitude}/{$this->longitude}"; }
     public function getStatusLabelAttribute(): string { return ['draft'=>'Taslak','completed'=>'Tamamlandı','cancelled'=>'İptal'][$this->status] ?? $this->status; }

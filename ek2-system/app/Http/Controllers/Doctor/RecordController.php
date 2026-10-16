@@ -31,7 +31,8 @@ class RecordController extends Controller {
         $disk=Storage::disk('local'); $k=Konum::exif($disk->path($front)) ?? Konum::exif($disk->path($back)); $konum=[];
         if ($k) $konum=['latitude'=>$k['lat'],'longitude'=>$k['lon'],'location_source'=>'exif'];
         elseif (isset($data['konum_lat'],$data['konum_lon'])) $konum=['latitude'=>$data['konum_lat'],'longitude'=>$data['konum_lon'],'location_source'=>'tarayici','location_accuracy_m'=>isset($data['konum_dogruluk'])?(int)round($data['konum_dogruluk']):null];
-        if ($konum && ($adres=Konum::adres((float)$konum['latitude'],(float)$konum['longitude'],4))) $konum+=['address'=>$adres,'address_at'=>now()];
+        $konum+=(Konum::cihaz($disk->path($front)) ?? Konum::cihaz($disk->path($back)) ?? [])+['device_user_agent'=>mb_substr((string)$request->userAgent(),0,500)];
+        if (isset($konum['latitude']) && ($adres=Konum::adres((float)$konum['latitude'],(float)$konum['longitude'],4))) $konum+=['address'=>$adres,'address_at'=>now()];
         $record=Ek2Record::create($konum+['doctor_id'=>auth()->id(),'workplace_id'=>$data['workplace_id'],'tc_kimlik_no'=>$data['tc_kimlik_no'],'first_name'=>$data['first_name'],'last_name'=>$data['last_name'],'front_path'=>$front,'back_path'=>$back,'status'=>'completed','completed_at'=>now()]);
         AuditLog::kaydet('kayit_olustur',$record);
         return redirect()->route('doctor.records.index')->with('ok','EK-2 kaydı başarıyla yüklendi.');
@@ -48,6 +49,7 @@ class RecordController extends Controller {
         $path=$request->file('image')->storeAs($dir,$record->$col ? $side.'-'.now()->format('Ymd-His').'.jpeg' : $side.'.jpeg','local');
         $kalan=array_values(array_diff($record->retake_pages ?? [],[$side])); $upd=[$col=>$path,'retake_pages'=>$kalan ?: null]+($kalan?[]:['retake_note'=>null]);
         if ($record->latitude===null && ($k=Konum::exif(Storage::disk('local')->path($path)))) $upd+=['latitude'=>$k['lat'],'longitude'=>$k['lon'],'location_source'=>'exif'];
+        if (!$record->device_model && !$record->device_make) $upd+=(Konum::cihaz(Storage::disk('local')->path($path)) ?? [])+['device_user_agent'=>mb_substr((string)$request->userAgent(),0,500)];
         $record->update($upd+['ocr_status'=>'bekliyor']); AuditLog::kaydet($retake?'sayfa_yeniden_cek':'sayfa_ekle',$record,['sayfa'=>$side]);
         return redirect()->route('doctor.records.show',$record)->with('ok',($side==='front'?'Ön':'Arka').($retake?' sayfa yeniden çekildi.':' sayfa eklendi.'));
     }

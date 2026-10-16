@@ -45,6 +45,7 @@ Artisan::command('ek2:ocr-aktar {--limit=200} {--tekrar-dene : hata durumundaki 
                 'isyeri'=>['id'=>$r->workplace->id, 'ad'=>$r->workplace->name, 'sgk_sicil_no'=>$r->workplace->sgk_sicil_no, 'adres'=>$r->workplace->address],
                 'doktor'=>['id'=>$r->doctor->id, 'ad_soyad'=>trim($r->doctor->name.' '.$r->doctor->surname)],
                 'yukleme_zamani'=>$r->completed_at?->toIso8601String(),
+                'cihaz'=>['marka'=>$r->device_make,'model'=>$r->device_model],
                 'konum'=>$r->latitude===null ? null : ['enlem'=>$r->latitude,'boylam'=>$r->longitude,'kaynak'=>$r->location_source,'dogruluk_m'=>$r->location_accuracy_m,'adres'=>$r->address],
             ];
             $json = json_encode($kunye, JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR);
@@ -62,7 +63,11 @@ Artisan::command('ek2:ocr-aktar {--limit=200} {--tekrar-dene : hata durumundaki 
 // Konumu olmayan kayıtlarda fotoğraf EXIF'inden GPS okur; adresi çözülmemiş kayıtları Nominatim ile adrese çevirir
 // (Nominatim kuralı: saniyede en fazla 1 istek). Adres yeni çözülen ve OCR'a gitmiş kayıt yeniden aktarılır.
 Artisan::command('ek2:konum {--limit=50}', function () {
-    $disk = Storage::disk('local'); $exif = 0; $adres = 0;
+    $disk = Storage::disk('local'); $exif = 0; $adres = 0; $cihaz = 0;
+    // Telefonla yüklenmiş, cihaz bilgisi boş kayıtlar: EXIF marka / model (taranmış formlarda tarayıcı bilgisi olacağından atlanır)
+    foreach (Ek2Record::where('source','telefon')->whereNull('device_model')->whereNull('device_make')->orderBy('id')->limit((int) $this->option('limit'))->get() as $r) {
+        foreach ([$r->front_path,$r->back_path] as $p) if ($p && $disk->exists($p) && ($c = Konum::cihaz($disk->path($p)))) { $r->update($c); $cihaz++; break; }
+    }
     foreach (Ek2Record::whereNull('latitude')->where('status','!=','draft')->orderBy('id')->limit((int) $this->option('limit'))->get() as $r) {
         $k = ($r->front_path && $disk->exists($r->front_path) ? Konum::exif($disk->path($r->front_path)) : null) ?? ($r->back_path && $disk->exists($r->back_path) ? Konum::exif($disk->path($r->back_path)) : null);
         if ($k) { $r->update(['latitude'=>$k['lat'],'longitude'=>$k['lon'],'location_source'=>'exif']); $exif++; }
@@ -71,7 +76,7 @@ Artisan::command('ek2:konum {--limit=50}', function () {
         if ($i) usleep(1100000);
         if ($a = Konum::adres($r->latitude, $r->longitude)) { $r->update(['address'=>$a,'address_at'=>now(),'ocr_status'=>$r->ocr_status==='aktarildi'?'bekliyor':$r->ocr_status]); $adres++; }
     }
-    $this->info("Konum: {$exif} kayda EXIF'ten konum, {$adres} kayda adres eklendi.");
+    $this->info("Konum: {$exif} kayda EXIF'ten konum, {$adres} kayda adres, {$cihaz} kayda cihaz bilgisi eklendi.");
 })->purpose('EK-2 kayıtlarına fotoğraf GPS konumu ve adres ekler');
 
 // OCR projesinin taranmış formlarını kayıt olarak ekler. Dosyalar önceden sunucuda belge klasörüne taşınmış olmalı

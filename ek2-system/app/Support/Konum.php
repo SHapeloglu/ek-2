@@ -17,6 +17,13 @@ class Konum {
         if (count($v) < 3) return null;
         $d = $v[0] + $v[1] / 60 + $v[2] / 3600; return in_array(strtoupper($ref), ['S','W'], true) ? -$d : $d;
     }
+    /** @return array{device_make:?string,device_model:?string}|null fotoğrafı çeken cihazın EXIF marka / modeli */
+    public static function cihaz(string $path): ?array {
+        $e = @exif_read_data($path, 'IFD0'); if (!$e) return null;
+        $t = fn($v) => ($v = trim(preg_replace('/\s+/', ' ', (string) $v))) === '' ? null : mb_substr($v, 0, 100);
+        $make = $t($e['Make'] ?? ''); $model = $t($e['Model'] ?? '');
+        return ($make || $model) ? ['device_make'=>$make, 'device_model'=>$model] : null;
+    }
     public static function adres(float $lat, float $lon, int $timeout = 5): ?string {
         try {
             $r = Http::timeout($timeout)->withHeaders(['User-Agent'=>'EK2-Sistemi/1.0 (+https://ek-2.selimkilic.com.tr)'])
