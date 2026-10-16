@@ -60,6 +60,18 @@ class Ek2Record extends Model
         }
         $this->update([$col=>$yol,'ocr_status'=>$this->ocr_status==='aktarildi' ? 'bekliyor' : $this->ocr_status]);
     }
+    public const SIRALAMALAR = ['yeni'=>'En yeni','eski'=>'En eski','ad'=>'Ada göre (A→Z)','ad_ters'=>'Ada göre (Z→A)','soyad'=>'Soyada göre (A→Z)'];
+    // Türkçe alfabe sırası (Ç, Ğ, İ, Ö, Ş, Ü doğru yerde)
+    public function scopeSirala($q, ?string $s) {
+        $tr=fn($c,$y='asc')=>$q->orderByRaw("$c COLLATE utf8mb4_turkish_ci $y");
+        return match ($s) {
+            'eski'=>$q->oldest()->orderBy('id'),
+            'ad'=>$tr('first_name')->orderByRaw('last_name COLLATE utf8mb4_turkish_ci'),
+            'ad_ters'=>$tr('first_name','desc')->orderByRaw('last_name COLLATE utf8mb4_turkish_ci desc'),
+            'soyad'=>$tr('last_name')->orderByRaw('first_name COLLATE utf8mb4_turkish_ci'),
+            default=>$q->latest()->orderByDesc('id'),
+        };
+    }
     protected static function booted(): void {
         static::creating(function (Ek2Record $record) { if (!$record->uuid) $record->uuid = (string) Str::uuid(); });
     }

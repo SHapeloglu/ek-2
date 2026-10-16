@@ -10,7 +10,7 @@ use Illuminate\Validation\Rule;
 class RecordController extends Controller {
     public function index(Request $request){
         $eksikMi=$request->boolean('eksik');
-        $records=Ek2Record::with(['doctor','workplace'])->when($eksikMi,fn($q)=>$q->eksik())->ara($request->input('q'))->latest()->paginate(50)->withQueryString();
+        $records=Ek2Record::with(['doctor','workplace'])->when($eksikMi,fn($q)=>$q->eksik())->ara($request->input('q'))->sirala($request->input('sira'))->paginate(50)->withQueryString();
         return view('admin.records.index',compact('records','eksikMi'));
     }
     public function show(Ek2Record $record){
