@@ -9,9 +9,9 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class Ek2Record extends Model
 {
-    protected $fillable = ['doctor_id','workplace_id','source','legacy_form_id','review_note','retake_pages','retake_note','tc_kimlik_no','first_name','last_name','front_path','back_path','latitude','longitude','location_source','location_accuracy_m','address','address_at','device_make','device_model','device_user_agent','status','completed_at','cancelled_at','cancel_reason','ocr_status','ocr_exported_at','ocr_error'];
+    protected $fillable = ['doctor_id','workplace_id','source','legacy_form_id','review_note','retake_pages','retake_note','tc_kimlik_no','first_name','last_name','exam_date','exam_date_source','front_path','back_path','latitude','longitude','location_source','location_accuracy_m','address','address_at','device_make','device_model','device_user_agent','status','completed_at','cancelled_at','cancel_reason','ocr_status','ocr_exported_at','ocr_error'];
     protected $hidden = ['tc_kimlik_no'];
-    protected function casts(): array { return ['completed_at'=>'datetime','cancelled_at'=>'datetime','address_at'=>'datetime','retake_pages'=>'array','latitude'=>'float','longitude'=>'float','ocr_exported_at'=>'datetime']; }
+    protected function casts(): array { return ['completed_at'=>'datetime','cancelled_at'=>'datetime','exam_date'=>'date','address_at'=>'datetime','retake_pages'=>'array','latitude'=>'float','longitude'=>'float','ocr_exported_at'=>'datetime']; }
     public function doctor(): BelongsTo { return $this->belongsTo(User::class, 'doctor_id'); }
     public function workplace(): BelongsTo { return $this->belongsTo(Workplace::class); }
     public function getMaskedTcAttribute(): string {
@@ -60,6 +60,18 @@ class Ek2Record extends Model
         }
         $this->update([$col=>$yol,'ocr_status'=>$this->ocr_status==='aktarildi' ? 'bekliyor' : $this->ocr_status]);
     }
+    // Mükerrer şüphesi: iptal edilmemiş, aynı TC + aynı muayene tarihli birden çok kayıt (aynı kişinin aynı gün iki EK-2'si olamaz)
+    public function scopeMukerrer($q) {
+        return $q->where('status','!=','cancelled')->whereNotNull('exam_date')->where('tc_kimlik_no','!=','')
+            ->whereRaw("(tc_kimlik_no, exam_date) IN (SELECT tc_kimlik_no, exam_date FROM ek2_records WHERE status <> 'cancelled' AND exam_date IS NOT NULL AND tc_kimlik_no <> '' GROUP BY tc_kimlik_no, exam_date HAVING COUNT(*) > 1)");
+    }
+    // TC çakışması: aynı TC farklı ad-soyadla başka bir kayıtta (bir TC iki kişiye ait olamaz → TC ya da isim yanlış girilmiş)
+    public function scopeTcCakisma($q) {
+        return $q->where('status','!=','cancelled')->where('tc_kimlik_no','!=','')
+            ->whereRaw("tc_kimlik_no IN (SELECT tc_kimlik_no FROM ek2_records WHERE status <> 'cancelled' AND tc_kimlik_no <> '' GROUP BY tc_kimlik_no HAVING COUNT(DISTINCT LOWER(CONCAT(TRIM(first_name),' ',TRIM(last_name))) COLLATE utf8mb4_turkish_ci) > 1)");
+    }
+    /** Aynı kişinin (TC) diğer kayıtları */
+    public function digerKayitlar() { return $this->tc_kimlik_no==='' ? collect() : static::with('workplace')->where('tc_kimlik_no',$this->tc_kimlik_no)->where('id','!=',$this->id)->orderByDesc('exam_date')->orderByDesc('created_at')->get(); }
     public const SIRALAMALAR = ['yeni'=>'En yeni','eski'=>'En eski','ad'=>'Ada göre (A→Z)','ad_ters'=>'Ada göre (Z→A)','soyad'=>'Soyada göre (A→Z)'];
     // Türkçe alfabe sırası (Ç, Ğ, İ, Ö, Ş, Ü doğru yerde)
     public function scopeSirala($q, ?string $s) {

@@ -9,9 +9,10 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 class RecordController extends Controller {
     public function index(Request $request){
-        $eksikMi=$request->boolean('eksik');
-        $records=Ek2Record::with(['doctor','workplace'])->when($eksikMi,fn($q)=>$q->eksik())->ara($request->input('q'))->sirala($request->input('sira'))->paginate(50)->withQueryString();
-        return view('admin.records.index',compact('records','eksikMi'));
+        $eksikMi=$request->boolean('eksik'); $mukerrerMi=$request->boolean('mukerrer'); $cakismaMi=$request->boolean('cakisma');
+        $records=Ek2Record::with(['doctor','workplace'])->when($eksikMi,fn($q)=>$q->eksik())->when($mukerrerMi,fn($q)=>$q->mukerrer())->when($cakismaMi,fn($q)=>$q->tcCakisma())->ara($request->input('q'))->sirala($request->input('sira'))->paginate(50)->withQueryString();
+        $mukerrerIdler=Ek2Record::mukerrer()->whereIn('id',$records->pluck('id'))->pluck('id')->all(); $cakismaIdler=Ek2Record::tcCakisma()->whereIn('id',$records->pluck('id'))->pluck('id')->all();
+        return view('admin.records.index',compact('records','eksikMi','mukerrerMi','cakismaMi','mukerrerIdler','cakismaIdler'));
     }
     public function show(Ek2Record $record){
         AuditLog::kaydet('kayit_goruntule',$record);
@@ -29,9 +30,9 @@ class RecordController extends Controller {
         $data=$request->validate([
             'workplace_id'=>['required','integer',Rule::exists('workplaces','id')->where(fn($q)=>$q->where('is_active',true)->orWhere('id',$record->workplace_id))],
             'tc_kimlik_no'=>['required','digits:11',new TcKimlikNo],'first_name'=>['required','string','max:100'],'last_name'=>['required','string','max:100'],
-            'note'=>['required','string','max:500'],
+            'exam_date'=>['nullable','date','before_or_equal:today','after:1990-01-01'],'note'=>['required','string','max:500'],
         ]);
-        $note=$data['note']; unset($data['note']); $record->fill($data);
+        $note=$data['note']; unset($data['note']); $record->fill($data); if ($record->isDirty('exam_date')) $record->exam_date_source=$record->exam_date ? 'elle' : null;
         $hadReview=(bool)$record->review_note; $record->review_note=null;
         if (!$record->isDirty() && !$hadReview) return back()->withErrors(['note'=>'Değişiklik yapılmadı.'])->withInput();
         $changed=array_keys($record->getDirty());

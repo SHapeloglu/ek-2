@@ -44,6 +44,7 @@ Artisan::command('ek2:ocr-aktar {--limit=200} {--tekrar-dene : hata durumundaki 
                 'tc_kimlik_no'=>$r->tc_kimlik_no, 'ad'=>$r->first_name, 'soyad'=>$r->last_name,
                 'isyeri'=>['id'=>$r->workplace->id, 'ad'=>$r->workplace->name, 'sgk_sicil_no'=>$r->workplace->sgk_sicil_no, 'adres'=>$r->workplace->address],
                 'doktor'=>['id'=>$r->doctor->id, 'ad_soyad'=>trim($r->doctor->name.' '.$r->doctor->surname)],
+                'muayene_tarihi'=>$r->exam_date?->toDateString(),
                 'yukleme_zamani'=>$r->completed_at?->toIso8601String(),
                 'cihaz'=>['marka'=>$r->device_make,'model'=>$r->device_model],
                 'konum'=>$r->latitude===null ? null : ['enlem'=>$r->latitude,'boylam'=>$r->longitude,'kaynak'=>$r->location_source,'dogruluk_m'=>$r->location_accuracy_m,'adres'=>$r->address],
@@ -97,3 +98,17 @@ Artisan::command('ek2:tarama-ice-aktar {manifest} {--doktor=} {--isyeri=} {--den
     }
     $this->info(($this->option('deneme')?'[deneme] ':'')."İçe aktarım: {$yeni} yeni kayıt, {$var} zaten vardı.");
 })->purpose('OCR projesinin taranmış EK-2 formlarını kayıt olarak ekler');
+
+// Muayene (onay) tarihini dışarıdan alır: [{"form_id" ya da "uuid", "tarih": "YYYY-MM-DD"}]. Taranmışlarda OCR etiketinden,
+// ileride OCR sonucundan. Elle girilmiş tarihin üzerine yazmaz.
+Artisan::command('ek2:muayene-tarihi-al {dosya} {--kaynak=ocr}', function () {
+    $kaynak = $this->option('kaynak'); abort_unless(in_array($kaynak,['etiket','ocr'],true),1,'kaynak: etiket | ocr');
+    $yeni = 0; $atla = 0;
+    foreach (json_decode(file_get_contents($this->argument('dosya')), true, flags: JSON_THROW_ON_ERROR) as $x) {
+        $r = isset($x['uuid']) ? Ek2Record::where('uuid',$x['uuid'])->first() : Ek2Record::where('legacy_form_id',$x['form_id'] ?? '')->first();
+        if (!$r || $r->exam_date_source === 'elle' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) ($x['tarih'] ?? ''))) { $atla++; continue; }
+        $r->update(['exam_date'=>$x['tarih'],'exam_date_source'=>$kaynak]); $yeni++;
+    }
+    $m = Ek2Record::mukerrer()->count();
+    $this->info("Muayene tarihi: {$yeni} kayda yazıldı, {$atla} atlandı. Mükerrer şüphesi olan kayıt: {$m}.");
+})->purpose('Muayene tarihini OCR etiketinden / sonucundan alır');

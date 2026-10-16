@@ -14,7 +14,8 @@ class RecordController extends Controller {
     public function index(Request $request){
         $eksikMi=$request->boolean('eksik'); $eksikSayi=Ek2Record::where('doctor_id',auth()->id())->eksik()->count();
         $records=Ek2Record::with('workplace')->where('doctor_id',auth()->id())->when($eksikMi,fn($q)=>$q->eksik())->ara($request->input('q'))->sirala($request->input('sira'))->paginate(30)->withQueryString();
-        return view('doctor.records.index',compact('records','eksikMi','eksikSayi'));
+        $mukerrerIdler=Ek2Record::mukerrer()->whereIn('id',$records->pluck('id'))->pluck('id')->all(); $cakismaIdler=Ek2Record::tcCakisma()->whereIn('id',$records->pluck('id'))->pluck('id')->all();
+        return view('doctor.records.index',compact('records','eksikMi','eksikSayi','mukerrerIdler','cakismaIdler'));
     }
     public function create(){ $workplaces=Workplace::where('is_active',true)->orderBy('name')->get(['id','name']); return view('doctor.records.create',compact('workplaces')); }
     public function store(Request $request){
@@ -35,7 +36,9 @@ class RecordController extends Controller {
         if (isset($konum['latitude']) && ($adres=Konum::adres((float)$konum['latitude'],(float)$konum['longitude'],4))) $konum+=['address'=>$adres,'address_at'=>now()];
         $record=Ek2Record::create($konum+['doctor_id'=>auth()->id(),'workplace_id'=>$data['workplace_id'],'tc_kimlik_no'=>$data['tc_kimlik_no'],'first_name'=>$data['first_name'],'last_name'=>$data['last_name'],'front_path'=>$front,'back_path'=>$back,'status'=>'completed','completed_at'=>now()]);
         AuditLog::kaydet('kayit_olustur',$record);
-        return redirect()->route('doctor.records.index')->with('ok','EK-2 kaydı başarıyla yüklendi.');
+        $farkli=Ek2Record::where('tc_kimlik_no',$record->tc_kimlik_no)->where('id','!=',$record->id)->where('status','!=','cancelled')->get()->contains(fn($o)=>mb_strtolower(trim($o->first_name).' '.trim($o->last_name))!==mb_strtolower(trim($record->first_name).' '.trim($record->last_name)));
+        $bugun=Ek2Record::where('tc_kimlik_no',$record->tc_kimlik_no)->where('id','!=',$record->id)->where('status','!=','cancelled')->whereDate('created_at',today())->count();
+        return redirect()->route('doctor.records.index')->with('ok','EK-2 kaydı başarıyla yüklendi.'.($bugun?" Uyarı: bu TC ile bugün {$bugun} kayıt daha yüklenmiş — aynı form iki kez yüklenmiş olabilir.":'').($farkli?' Uyarı: bu TC başka bir isimle de kayıtlı — TC yanlış girilmiş olabilir.':''));
     }
     public function show(Ek2Record $record){ $this->authorizeRecord($record); AuditLog::kaydet('kayit_goruntule',$record); return view('doctor.records.show',compact('record')); }
     public function image(Ek2Record $record,string $side){ $this->authorizeRecord($record); AuditLog::kaydet('foto_goruntule',$record,['sayfa'=>$side]); return $record->imageResponse($side); }
