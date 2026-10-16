@@ -34,5 +34,18 @@ class RecordController extends Controller {
     }
     public function show(Ek2Record $record){ $this->authorizeRecord($record); AuditLog::kaydet('kayit_goruntule',$record); return view('doctor.records.show',compact('record')); }
     public function image(Ek2Record $record,string $side){ $this->authorizeRecord($record); AuditLog::kaydet('foto_goruntule',$record,['sayfa'=>$side]); return $record->imageResponse($side); }
+    public function addPage(Request $request, Ek2Record $record, string $side){
+        $this->authorizeRecord($record); abort_unless(in_array($side,['front','back'],true),404); abort_if($record->status==='cancelled',403);
+        $col=$side==='front'?'front_path':'back_path'; $retake=in_array($side,$record->retake_pages ?? [],true);
+        abort_if($record->$col && !$retake,403,'Bu sayfa zaten yüklü.');
+        $request->validate(['image'=>['required','image','mimes:jpeg,jpg','max:10240']]);
+        $other=$record->front_path ?: $record->back_path; $dir=$other ? dirname($other) : 'ek2/'.now()->format('Y/m').'/'.$record->uuid;
+        // Yeniden çekimde eski fotoğraf silinmez (OCR etiketleri ona bağlı olabilir); yeni dosya sürüm adıyla yanında durur
+        $path=$request->file('image')->storeAs($dir,$record->$col ? $side.'-'.now()->format('Ymd-His').'.jpeg' : $side.'.jpeg','local');
+        $kalan=array_values(array_diff($record->retake_pages ?? [],[$side])); $upd=[$col=>$path,'retake_pages'=>$kalan ?: null]+($kalan?[]:['retake_note'=>null]);
+        if ($record->latitude===null && ($k=Konum::exif(Storage::disk('local')->path($path)))) $upd+=['latitude'=>$k['lat'],'longitude'=>$k['lon'],'location_source'=>'exif'];
+        $record->update($upd+['ocr_status'=>'bekliyor']); AuditLog::kaydet($retake?'sayfa_yeniden_cek':'sayfa_ekle',$record,['sayfa'=>$side]);
+        return redirect()->route('doctor.records.show',$record)->with('ok',($side==='front'?'Ön':'Arka').($retake?' sayfa yeniden çekildi.':' sayfa eklendi.'));
+    }
     private function authorizeRecord(Ek2Record $record): void { abort_unless($record->doctor_id===auth()->id(),403); }
 }

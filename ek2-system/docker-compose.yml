@@ -8,6 +8,7 @@ services:
     env_file: .env
     volumes:
       - ek2_storage:/var/www/html/storage
+      - ${BELGE_HOST_DIZINI:-/srv/ek2/belgeler}:/var/www/html/storage/app/private/ek2
       - ${OCR_AKTARIM_HOST:-./ocr_aktarim}:/var/www/html/storage/ocr_aktarim
     networks: [ek2-net, ortak-db]
     mem_limit: 384m

@@ -28,12 +28,21 @@ class RecordController extends Controller {
             'note'=>['required','string','max:500'],
         ]);
         $note=$data['note']; unset($data['note']); $record->fill($data);
-        if (!$record->isDirty()) return back()->withErrors(['note'=>'Değişiklik yapılmadı.'])->withInput();
+        $hadReview=(bool)$record->review_note; $record->review_note=null;
+        if (!$record->isDirty() && !$hadReview) return back()->withErrors(['note'=>'Değişiklik yapılmadı.'])->withInput();
         $changed=array_keys($record->getDirty());
         // OCR'a gitmişse künye yeniden yazılsın
         if ($record->ocr_status!=='bekliyor') $record->ocr_status='bekliyor';
         $record->save(); AuditLog::kaydet('kayit_duzelt',$record,['alanlar'=>$changed,'not'=>$note]);
         return redirect()->route('admin.records.show',$record)->with('ok',"Kayıt düzeltildi; OCR'a yeniden aktarılacak.");
+    }
+    public function retake(Request $request, Ek2Record $record){
+        abort_if($record->status==='cancelled',403);
+        $data=$request->validate(['pages'=>['nullable','array'],'pages.*'=>['in:front,back'],'retake_note'=>['nullable','string','max:500']]);
+        $pages=array_values(array_unique($data['pages'] ?? []));
+        $record->update(['retake_pages'=>$pages ?: null,'retake_note'=>$pages ? ($data['retake_note'] ?? null) : null]);
+        AuditLog::kaydet('yeniden_cekim_isaretle',$record,['sayfalar'=>$pages,'not'=>$data['retake_note'] ?? null]);
+        return redirect()->route('admin.records.show',$record)->with('ok',$pages?'Doktordan yeniden çekim istendi.':'Yeniden çekim isteği kaldırıldı.');
     }
     public function cancel(Request $request, Ek2Record $record){
         abort_if($record->status==='cancelled',403,'Kayıt zaten iptal.');

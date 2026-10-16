@@ -23,6 +23,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth','role:admin'])->group
     Route::get('records/{record}/edit',[AdminRecordController::class,'edit'])->name('records.edit');
     Route::put('records/{record}',[AdminRecordController::class,'update'])->name('records.update');
     Route::post('records/{record}/cancel',[AdminRecordController::class,'cancel'])->name('records.cancel');
+    Route::post('records/{record}/retake',[AdminRecordController::class,'retake'])->name('records.retake');
     Route::get('audit',[AuditController::class,'index'])->name('audit.index');
 });
 Route::prefix('app')->name('doctor.')->middleware(['auth','role:doctor'])->group(function(){
@@ -32,4 +33,5 @@ Route::prefix('app')->name('doctor.')->middleware(['auth','role:doctor'])->group
     Route::post('ek2',[DoctorRecordController::class,'store'])->name('records.store');
     Route::get('ek2/{record}',[DoctorRecordController::class,'show'])->name('records.show');
     Route::get('ek2/{record}/image/{side}',[DoctorRecordController::class,'image'])->name('records.image');
+    Route::post('ek2/{record}/page/{side}',[DoctorRecordController::class,'addPage'])->name('records.page');
 });
