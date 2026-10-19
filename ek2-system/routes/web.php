@@ -33,6 +33,7 @@ Route::prefix('app')->name('doctor.')->middleware(['auth','role:doctor'])->group
     Route::get('/',DoctorDashboard::class)->name('dashboard');
     Route::get('ek2',[DoctorRecordController::class,'index'])->name('records.index');
     Route::get('ek2/new',[DoctorRecordController::class,'create'])->name('records.create');
+    Route::post('ek2/kalite-kontrol',[DoctorRecordController::class,'kalite'])->name('records.kalite');
     Route::post('ek2',[DoctorRecordController::class,'store'])->name('records.store');
     Route::get('ek2/{record}',[DoctorRecordController::class,'show'])->name('records.show');
     Route::get('ek2/{record}/image/{side}',[DoctorRecordController::class,'image'])->name('records.image');
