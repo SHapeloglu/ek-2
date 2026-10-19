@@ -45,7 +45,6 @@ class RecordController extends Controller {
     public function addPage(Request $request, Ek2Record $record, string $side){
         $this->authorizeRecord($record); abort_unless(in_array($side,['front','back'],true),404); abort_if($record->status==='cancelled',403);
         $col=$side==='front'?'front_path':'back_path'; $retake=in_array($side,$record->retake_pages ?? [],true);
-        abort_if($record->$col && !$retake,403,'Bu sayfa zaten yüklü.');
         $request->validate(['image'=>['required','image','mimes:jpeg,jpg','max:10240']]);
         $other=$record->front_path ?: $record->back_path; $dir=$other ? dirname($other) : 'ek2/'.now()->format('Y/m').'/'.$record->uuid;
         // Yeniden çekimde eski fotoğraf silinmez (OCR etiketleri ona bağlı olabilir); yeni dosya sürüm adıyla yanında durur
