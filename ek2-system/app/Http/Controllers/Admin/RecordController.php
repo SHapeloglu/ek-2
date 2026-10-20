@@ -10,10 +10,11 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 class RecordController extends Controller {
     public function index(Request $request){
-        $eksikMi=$request->boolean('eksik'); $mukerrerMi=$request->boolean('mukerrer'); $cakismaMi=$request->boolean('cakisma'); $pasifMi=$request->boolean('pasif');
-        $records=Ek2Record::with(['doctor','workplace'])->when($eksikMi,fn($q)=>$q->eksik())->when($mukerrerMi,fn($q)=>$q->mukerrer())->when($cakismaMi,fn($q)=>$q->tcCakisma())->when($pasifMi,fn($q)=>$q->where('status','cancelled'))->ara($request->input('q'))->sirala($request->input('sira'))->paginate(50)->withQueryString();
+        $eksikMi=$request->boolean('eksik'); $mukerrerMi=$request->boolean('mukerrer'); $cakismaMi=$request->boolean('cakisma');
+        $durum=$request->input('durum',$request->boolean('pasif')?'pasif':'aktif'); if (!in_array($durum,['aktif','pasif','tumu'],true)) $durum='aktif';
+        $records=Ek2Record::with(['doctor','workplace'])->when($eksikMi,fn($q)=>$q->eksik())->when($mukerrerMi,fn($q)=>$q->mukerrer())->when($cakismaMi,fn($q)=>$q->tcCakisma())->when($durum==='aktif',fn($q)=>$q->where('status','!=','cancelled'))->when($durum==='pasif',fn($q)=>$q->where('status','cancelled'))->ara($request->input('q'))->sirala($request->input('sira'))->paginate(50)->withQueryString();
         $mukerrerIdler=Ek2Record::mukerrer()->whereIn('id',$records->pluck('id'))->pluck('id')->all(); $cakismaIdler=Ek2Record::tcCakisma()->whereIn('id',$records->pluck('id'))->pluck('id')->all();
-        return view('admin.records.index',compact('records','eksikMi','mukerrerMi','cakismaMi','pasifMi','mukerrerIdler','cakismaIdler'));
+        return view('admin.records.index',compact('records','eksikMi','mukerrerMi','cakismaMi','durum','mukerrerIdler','cakismaIdler'));
     }
     public function show(Ek2Record $record){
         AuditLog::kaydet('kayit_goruntule',$record);
