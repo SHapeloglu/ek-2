@@ -13,10 +13,11 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 class RecordController extends Controller {
     public function index(Request $request){
-        $eksikMi=$request->boolean('eksik'); $eksikSayi=Ek2Record::where('doctor_id',auth()->id())->eksik()->count();
-        $records=Ek2Record::with('workplace')->where('doctor_id',auth()->id())->when($eksikMi,fn($q)=>$q->eksik())->ara($request->input('q'))->sirala($request->input('sira'))->paginate(30)->withQueryString();
+        $eksikMi=$request->boolean('eksik'); $eksikSayi=Ek2Record::where('doctor_id',auth()->id())->where('status','!=','cancelled')->eksik()->count();
+        $durum=$request->input('durum','aktif'); if (!in_array($durum,['aktif','pasif','tumu'],true)) $durum='aktif';
+        $records=Ek2Record::with('workplace')->where('doctor_id',auth()->id())->when($durum==='aktif',fn($q)=>$q->where('status','!=','cancelled'))->when($durum==='pasif',fn($q)=>$q->where('status','cancelled'))->when($eksikMi,fn($q)=>$q->eksik())->ara($request->input('q'))->sirala($request->input('sira'))->paginate(30)->withQueryString();
         $mukerrerIdler=Ek2Record::mukerrer()->whereIn('id',$records->pluck('id'))->pluck('id')->all(); $cakismaIdler=Ek2Record::tcCakisma()->whereIn('id',$records->pluck('id'))->pluck('id')->all();
-        return view('doctor.records.index',compact('records','eksikMi','eksikSayi','mukerrerIdler','cakismaIdler'));
+        return view('doctor.records.index',compact('records','eksikMi','eksikSayi','durum','mukerrerIdler','cakismaIdler'));
     }
     public function create(){ $workplaces=Workplace::where('is_active',true)->orderBy('name')->get(['id','name']); return view('doctor.records.create',compact('workplaces')); }
     public function store(Request $request){
