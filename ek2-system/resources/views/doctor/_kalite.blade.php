@@ -1,5 +1,5 @@
 <script>
-// Fotoğraf seçilince kalite servisine sor. Kontrol sürerken ya da hata/kapalı servis durumunda engellemez; yalnız tamam=false iken uyarır.
+// Fotoğraf seçilince kalite servisine sor. Kontrol sürerken devam düğmesi kapalı kalır (uyarı görülmeden geçilmesin); servis hata verir/kapalıysa ya da 20 sn'de yanıt gelmezse engellemez; yalnız tamam=false iken uyarır.
 const EK2_KALITE_URL=@json(route('doctor.records.kalite'));
 function ek2Alan(form,ad){let h=form.querySelector('input[name="'+ad+'"]');if(!h){h=document.createElement('input');h.type='hidden';h.name=ad;form.appendChild(h)}return h}
 async function ek2Kalite(input,sayfa,alan){
@@ -7,11 +7,12 @@ async function ek2Kalite(input,sayfa,alan){
  const hedef=input.closest('.step')?.querySelector('.next')||form.querySelector('button:not([type=button])');
  kutu.querySelectorAll('.kalite-kutu,.kalite-durum').forEach(e=>e.remove()); hid.value=''; if(hedef)hedef.disabled=false;
  if(!f){const img=kutu.querySelector('img.preview');if(img)img.hidden=true;return}
- const d=document.createElement('p');d.className='muted kalite-durum';d.textContent='Fotoğraf kontrol ediliyor…';kutu.appendChild(d);
+ const d=document.createElement('p');d.className='muted kalite-durum';d.textContent='Fotoğraf kontrol ediliyor…';kutu.appendChild(d); if(hedef)hedef.disabled=true;
  let j=null;
  try{const fd=new FormData();fd.append('image',f);fd.append('sayfa',sayfa);fd.append('_token',form.querySelector('[name=_token]').value);
-  const r=await fetch(EK2_KALITE_URL,{method:'POST',body:fd,headers:{Accept:'application/json'},credentials:'same-origin'});if(r.ok)j=await r.json()}catch(e){}
+  const ac=new AbortController(),zt=setTimeout(()=>ac.abort(),20000);try{const r=await fetch(EK2_KALITE_URL,{method:'POST',body:fd,headers:{Accept:'application/json'},credentials:'same-origin',signal:ac.signal});if(r.ok)j=await r.json()}finally{clearTimeout(zt)}}catch(e){}
  d.remove(); if(input.files[0]!==f)return;
+ if(hedef)hedef.disabled=false;
  if(!j||j.tamam!==false)return;
  const nedenler=(j.nedenler||[]).map(String);
  const box=document.createElement('div');box.className='kalite-kutu';box.style.cssText='margin-top:12px;padding:12px;border:1px solid #b42318;background:#fdecea;border-radius:10px';
