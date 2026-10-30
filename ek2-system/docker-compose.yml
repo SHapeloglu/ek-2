@@ -1,4 +1,4 @@
-# EK-2 — sistem nginx (TLS, ek-2.selimkilic.com.tr) → 127.0.0.1:8096 → ek2-nginx → ek2-app (php-fpm)
+# EK-2 — sistem nginx (TLS, form.ek-2.com.tr; eski ek-2.selimkilic.com.tr yönlenir) → 127.0.0.1:8096 → ek2-nginx → ek2-app (php-fpm)
 # Veritabanı: ortak MySQL (/opt/mysql-ortak, ağ "ortak-db"). Kod imajın içinde; güncelleme = docker compose up -d --build
 services:
   ek2-app:

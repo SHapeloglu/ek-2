@@ -26,7 +26,7 @@ class Konum {
     }
     public static function adres(float $lat, float $lon, int $timeout = 5): ?string {
         try {
-            $r = Http::timeout($timeout)->withHeaders(['User-Agent'=>'EK2-Sistemi/1.0 (+https://ek-2.selimkilic.com.tr)'])
+            $r = Http::timeout($timeout)->withHeaders(['User-Agent'=>'EK2-Sistemi/1.0 (+https://form.ek-2.com.tr)'])
                 ->get('https://nominatim.openstreetmap.org/reverse', ['format'=>'jsonv2','lat'=>$lat,'lon'=>$lon,'zoom'=>18,'accept-language'=>'tr']);
             $a = $r->successful() ? $r->json('display_name') : null;
             return $a ? mb_substr($a, 0, 500) : null;

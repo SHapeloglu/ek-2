@@ -2,7 +2,7 @@
 
 Hekimin EK-2 (işe giriş / periyodik muayene) formunun ön ve arka yüzünü telefonla çekip hasta ve işyeri bilgisiyle yüklediği, kayıtların OCR hattına (`SHapeloglu/trocr-faz1`) aktarıldığı Laravel 13 uygulaması. Tarayıcı (scanner) ile tarama adımının yerini alır.
 
-Canlı adres: https://ek-2.selimkilic.com.tr
+Canlı adres: https://form.ek-2.com.tr (2026-10-30; eski adres ek-2.selimkilic.com.tr buraya yönlenir)
 
 ## Roller
 - `admin`: doktor ve işyeri hesaplarını yönetir; tüm kayıtları, tam TC'yi ve fotoğrafları görür; kaydı düzeltir (not zorunlu) veya iptal eder (neden zorunlu); erişim kaydını izler.
@@ -22,7 +22,7 @@ Canlı adres: https://ek-2.selimkilic.com.tr
 - `mkdir ocr_aktarim && chown 82:82 ocr_aktarim` (konteynerdeki `www-data` = uid 82)
 - `docker compose up -d --build`
 - `docker exec ek2-app php artisan migrate --seed --force` (ilk admin `.env`'deki `ADMIN_EMAIL` / `ADMIN_PASSWORD`)
-- Sistem nginx: `docker/nginx/sistem-nginx-ek-2.conf` → `/etc/nginx/sites-available/ek-2`, `nginx -t`, `systemctl reload nginx`, `certbot --nginx -d ek-2.selimkilic.com.tr`
+- Sistem nginx: yeni adres `docker/nginx/sistem-nginx-form-ek-2.conf` (ek-2.com.tr ortak sertifikası; sunucuda `/etc/nginx/sites-available/ek-2-com-tr-https` içinde), eski adres `docker/nginx/sistem-nginx-ek-2.conf` → `/etc/nginx/sites-available/ek-2` (yönlendirme). `nginx -t`, `systemctl reload nginx`
 - Güncelleme: `git pull` → `docker compose up -d --build` → `docker exec ek2-app php artisan migrate --force`
 
 Kod imajın içindedir; `storage` adlı Docker volume'ünde fotoğraflar, oturumlar ve günlükler durur.
