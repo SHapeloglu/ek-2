@@ -8,13 +8,13 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 // Tamamlanmış ve OCR'a aktarılmamış kayıtları OCR giriş klasörüne yazar. Fotoğraflar kopyalanmaz: sunucudaki tek
-// belge klasörüne sembolik bağ yazılır. Her bağ/dosya önce .tmp adıyla yazılıp rename edilir; eksik sayfalı kayıt beklemede kalır; künye JSON'u en son yazılır, OCR tarafı JSON'u "kayıt hazır" işareti sayabilir.
+// belge klasörüne sembolik bağ yazılır. Her bağ/dosya önce .tmp adıyla yazılıp rename edilir; eksik sayfalı kayıt beklemede kalır; künye JSON'u en son yazılır (yalnız kayıt kimliği, sayfa adları, yükleme zamanı; KİŞİ VERİSİ YOK), OCR tarafı JSON'u "kayıt hazır" işareti sayabilir.
 // İptal edilen kayıt: klasördeki fotoğraf + künye silinir, yerine <uuid>.iptal.json bırakılır (OCR işlediyse geri alması için).
 Artisan::command('ek2:ocr-aktar {--limit=200} {--tekrar-dene : hata durumundaki kayıtları da dene}', function () {
     $hedef = rtrim(config('ek2.ocr_export_path'), '/');
     File::ensureDirectoryExists($hedef);
     $durumlar = $this->option('tekrar-dene') ? ['bekliyor','hata'] : ['bekliyor'];
-    $kayitlar = Ek2Record::with(['workplace','doctor'])->whereIn('status',['completed','cancelled'])->whereIn('ocr_status',$durumlar)
+    $kayitlar = Ek2Record::whereIn('status',['completed','cancelled'])->whereIn('ocr_status',$durumlar)
         ->where(fn($q)=>$q->where('status','cancelled')->orWhere(fn($q)=>$q->whereNotNull('front_path')->whereNotNull('back_path')))
         ->orderBy('id')->limit((int) $this->option('limit'))->get();
     $disk = Storage::disk('local'); $ok = 0; $hata = 0; $hostDizin = config('ek2.belge_host_dizini');
@@ -40,16 +40,7 @@ Artisan::command('ek2:ocr-aktar {--limit=200} {--tekrar-dene : hata durumundaki 
                 if (!symlink($hostDizin.'/'.substr($yol, 4), "{$hedef}/.{$ad}.tmp") || !rename("{$hedef}/.{$ad}.tmp", "{$hedef}/{$ad}")) throw new RuntimeException("sayfa {$no} bağı yazılamadı");
                 $sayfalar[$no] = $ad;
             }
-            $kunye = [
-                'kayit_uuid'=>$r->uuid, 'kaynak'=>$r->source, 'eski_form_id'=>$r->legacy_form_id, 'sayfa1'=>$sayfalar['1'], 'sayfa2'=>$sayfalar['2'],
-                'tc_kimlik_no'=>$r->tc_kimlik_no, 'ad'=>$r->first_name, 'soyad'=>$r->last_name,
-                'isyeri'=>['id'=>$r->workplace->id, 'ad'=>$r->workplace->name, 'sgk_sicil_no'=>$r->workplace->sgk_sicil_no, 'adres'=>$r->workplace->address],
-                'doktor'=>['id'=>$r->doctor->id, 'ad_soyad'=>trim($r->doctor->name.' '.$r->doctor->surname)],
-                'muayene_tarihi'=>$r->exam_date?->toDateString(),
-                'yukleme_zamani'=>$r->completed_at?->toIso8601String(),
-                'cihaz'=>['marka'=>$r->device_make,'model'=>$r->device_model],
-                'konum'=>$r->latitude===null ? null : ['enlem'=>$r->latitude,'boylam'=>$r->longitude,'kaynak'=>$r->location_source,'dogruluk_m'=>$r->location_accuracy_m,'adres'=>$r->address],
-            ];
+            $kunye = \App\Support\OcrKunye::olustur($r, $sayfalar);   // kişi verisi içermez (bkz. OcrKunye)
             $json = json_encode($kunye, JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR);
             if (file_put_contents("{$hedef}/.{$r->uuid}.json.tmp", $json) === false || !rename("{$hedef}/.{$r->uuid}.json.tmp", "{$hedef}/{$r->uuid}.json")) throw new RuntimeException('künye yazılamadı');
             $r->update(['ocr_status'=>'aktarildi','ocr_exported_at'=>now(),'ocr_error'=>null]); AuditLog::kaydet('ocr_aktar',$r); $ok++;

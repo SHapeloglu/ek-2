@@ -12,7 +12,7 @@ Canlı adres: https://ek-2.selimkilic.com.tr
 1. Doktor kaydı yükler → `ocr_status = bekliyor`.
 2. `php artisan ek2:ocr-aktar` her kayıt için OCR giriş klasörüne yazar:
    - `<uuid>1.jpeg` (ön), `<uuid>2.jpeg` (arka) — `homography_alan_kes.py` kuralı: yalnız `.jpeg`, son karakter sayfa no
-   - `<uuid>.json` — künye (TC, ad, soyad, işyeri, doktor, yükleme zamanı); en son yazılır, "kayıt hazır" işaretidir
+   - `<uuid>.json` — künye (yalnız kayıt kimliği, kaynak, eski form adı, iki sayfa adı, yükleme zamanı; **T.C., ad, işyeri, doktor, konum, cihaz YAZILMAZ**); en son yazılır, "kayıt hazır" işaretidir
 3. Admin kaydı düzeltirse kayıt yeniden aktarılır (künye ve fotoğraflar üzerine yazılır).
 4. Admin kaydı iptal ederse aktarım klasöründeki dosyalar silinir, yerine `<uuid>.iptal.json` bırakılır.
 
