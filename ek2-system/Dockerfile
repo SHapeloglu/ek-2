@@ -1,6 +1,6 @@
 FROM composer:2 AS vendor
 WORKDIR /app
-COPY composer.json ./
+COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction --ignore-platform-reqs
 COPY . .
 RUN composer dump-autoload --no-dev --optimize --no-scripts
