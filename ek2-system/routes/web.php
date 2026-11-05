@@ -3,6 +3,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboard;
 use App\Http\Controllers\Admin\DoctorController;
+use App\Http\Controllers\Admin\AssignmentController;
+use App\Http\Controllers\Doctor\AssignmentController as DoctorAssignmentController;
 use App\Http\Controllers\Admin\WorkplaceController;
 use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\RecordController as AdminRecordController;
@@ -17,6 +19,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth','role:admin'])->group
     Route::get('/',AdminDashboard::class)->name('dashboard');
     Route::resource('doctors',DoctorController::class)->except(['show','destroy']);
     Route::resource('workplaces',WorkplaceController::class)->except(['show','destroy']);
+    Route::resource('assignments',AssignmentController::class)->except(['show']);
+    Route::post('assignments/{assignment}/seri-sil',[AssignmentController::class,'destroySeries'])->name('assignments.destroySeries');
     Route::get('records',[AdminRecordController::class,'index'])->name('records.index');
     Route::get('records/{record}',[AdminRecordController::class,'show'])->name('records.show');
     Route::get('records/{record}/image/{side}',[AdminRecordController::class,'image'])->name('records.image');
@@ -31,6 +35,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth','role:admin'])->group
 });
 Route::prefix('app')->name('doctor.')->middleware(['auth','role:doctor'])->group(function(){
     Route::get('/',DoctorDashboard::class)->name('dashboard');
+    Route::get('gorevler',[DoctorAssignmentController::class,'index'])->name('assignments.index');
     Route::get('ek2',[DoctorRecordController::class,'index'])->name('records.index');
     Route::get('ek2/new',[DoctorRecordController::class,'create'])->name('records.create');
     Route::post('ek2/kalite-kontrol',[DoctorRecordController::class,'kalite'])->name('records.kalite');
