@@ -26,7 +26,7 @@
 @foreach($errors->all() as $e)<p class="err">{{ $e }}</p>@endforeach</form></div></div>
 <script>
 const steps=[...document.querySelectorAll('.step')], bar=document.getElementById('bar'); let i=0;
-function update(){steps.forEach((s,n)=>s.classList.toggle('active',n===i));bar.style.width=((i+1)/steps.length*100)+'%';scrollTo(0,0)}
+function update(){steps.forEach((s,n)=>s.classList.toggle('active',n===i));bar.style.width=((i+1)/steps.length*100)+'%';scrollTo(0,0);if(typeof taslakKaydet==='function')taslakKaydet()}
 function tcGecerli(t){if(!/^[1-9][0-9]{10}$/.test(t))return false;const d=[...t].map(Number),tek=d[0]+d[2]+d[4]+d[6]+d[8],cift=d[1]+d[3]+d[5]+d[7];return ((tek*7-cift)%10+10)%10===d[9]&&d.slice(0,10).reduce((a,b)=>a+b,0)%10===d[10]}
 const tcInput=document.querySelector('[name=tc_kimlik_no]');tcInput.addEventListener('input',()=>tcInput.setCustomValidity(''));
 function validStep(){const fields=[...steps[i].querySelectorAll('input[required],select[required]')];if(fields.includes(tcInput))tcInput.setCustomValidity(tcGecerli(tcInput.value)?'':'Geçerli bir T.C. Kimlik No girin.');return fields.every(f=>f.reportValidity())}
@@ -35,5 +35,15 @@ steps.forEach((s,n)=>{if(!n)return;const g=document.createElement('button');g.ty
 for(const [id,pid,sayfa,alan] of [['front','frontPreview',1,'kalite_uyari_on'],['back','backPreview',2,'kalite_uyari_arka']]) document.getElementById(id).addEventListener('change',e=>{const file=e.target.files[0];ek2Kalite(e.target,sayfa,alan);if(!file)return;const img=document.getElementById(pid);img.src=URL.createObjectURL(file);img.hidden=false});
 // Fotoğrafta GPS yoksa (ör. iPhone tarayıcıdan yüklerken siler) yedek: telefonun konumu; izin verilmezse kayıt yine yapılır
 if(navigator.geolocation)navigator.geolocation.getCurrentPosition(p=>{const f=document.getElementById('wizard');f.konum_lat.value=p.coords.latitude;f.konum_lon.value=p.coords.longitude;f.konum_dogruluk.value=p.coords.accuracy},()=>{},{enableHighAccuracy:true,timeout:20000,maximumAge:60000});
+// Geçici taslak: sayfa yenilenince adım ve metin alanları (ad, soyad, işyeri) geri gelir.
+// TC kimlik no ve fotoğraflar KAYDEDİLMEZ (kişisel veri cihazda kalmasın; fotoğraflar tarayıcıda tutulamaz).
+// Sadece bu sekmede (sessionStorage); gönderilince silinir.
+const TASLAK='ek2_taslak';
+function taslakKaydet(){try{const v={};['workplace_id','first_name','last_name'].forEach(n=>{const e=document.querySelector('[name='+n+']');if(e)v[n]=e.value});sessionStorage.setItem(TASLAK,JSON.stringify({i,v}))}catch(e){}}
+function taslakYukle(){try{const t=JSON.parse(sessionStorage.getItem(TASLAK)||'null');if(!t)return;Object.entries(t.v||{}).forEach(([n,val])=>{const e=document.querySelector('[name='+n+']');if(e&&!e.value&&val)e.value=val});i=Math.min(Math.max(t.i||0,0),steps.length-1);if(i>=2&&!tcInput.value)i=1}catch(e){}}
+document.querySelectorAll('[name=workplace_id],[name=first_name],[name=last_name]').forEach(e=>e.addEventListener('input',taslakKaydet));
+document.querySelectorAll('[name=workplace_id]').forEach(e=>e.addEventListener('change',taslakKaydet));
+document.getElementById('wizard').addEventListener('submit',()=>{try{sessionStorage.removeItem(TASLAK)}catch(e){}});
+taslakYukle();
 update();
 </script>@include('doctor._kalite')@endsection
