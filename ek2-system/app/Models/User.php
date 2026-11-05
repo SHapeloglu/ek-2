@@ -10,9 +10,9 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
-    protected $fillable = ['name','surname','email','password','role','is_active'];
+    protected $fillable = ['name','surname','email','password','role','is_active','serbest_isyeri'];
     protected $hidden = ['password','remember_token'];
-    protected function casts(): array { return ['email_verified_at'=>'datetime','password'=>'hashed','is_active'=>'boolean']; }
+    protected function casts(): array { return ['email_verified_at'=>'datetime','password'=>'hashed','is_active'=>'boolean','serbest_isyeri'=>'boolean']; }
     public function records(): HasMany { return $this->hasMany(Ek2Record::class, 'doctor_id'); }
     public function isAdmin(): bool { return $this->role === 'admin'; }
     public function isDoctor(): bool { return $this->role === 'doctor'; }

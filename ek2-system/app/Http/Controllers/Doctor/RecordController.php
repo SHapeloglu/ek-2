@@ -4,6 +4,8 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Ek2Record;
 use App\Models\Workplace;
+use App\Models\Assignment;
+use Illuminate\Validation\ValidationException;
 use App\Rules\TcKimlikNo;
 use App\Support\Konum;
 use Illuminate\Support\Facades\Http;
@@ -19,7 +21,15 @@ class RecordController extends Controller {
         $mukerrerIdler=Ek2Record::mukerrer()->whereIn('id',$records->pluck('id'))->pluck('id')->all(); $cakismaIdler=Ek2Record::tcCakisma()->whereIn('id',$records->pluck('id'))->pluck('id')->all();
         return view('doctor.records.index',compact('records','eksikMi','eksikSayi','durum','mukerrerIdler','cakismaIdler'));
     }
-    public function create(){ $workplaces=Workplace::where('is_active',true)->orderBy('name')->get(['id','name']); return view('doctor.records.create',compact('workplaces')); }
+    public function create(){ $workplaces=$this->izinliIsyerleri(); return view('doctor.records.create',compact('workplaces')); }
+    private function izinliIsyerleri(){
+        $q=Workplace::where('is_active',true);
+        if(!auth()->user()->serbest_isyeri){
+            $ids=Assignment::where('doctor_id',auth()->id())->whereDate('starts_at',today())->pluck('workplace_id');
+            $q->whereIn('id',$ids);
+        }
+        return $q->orderBy('name')->get(['id','name']);
+    }
     public function store(Request $request){
         $data=$request->validate([
             'workplace_id'=>['required','integer',Rule::exists('workplaces','id')->where('is_active',true)],
@@ -40,6 +50,7 @@ class RecordController extends Controller {
         elseif (isset($data['konum_lat'],$data['konum_lon'])) $konum=['latitude'=>$data['konum_lat'],'longitude'=>$data['konum_lon'],'location_source'=>'tarayici','location_accuracy_m'=>isset($data['konum_dogruluk'])?(int)round($data['konum_dogruluk']):null];
         $konum+=(Konum::cihaz($disk->path($front)) ?? Konum::cihaz($disk->path($back)) ?? [])+['device_user_agent'=>mb_substr((string)$request->userAgent(),0,500)];
         if (isset($konum['latitude']) && ($adres=Konum::adres((float)$konum['latitude'],(float)$konum['longitude'],4))) $konum+=['address'=>$adres,'address_at'=>now()];
+        if(!$this->izinliIsyerleri()->pluck('id')->contains((int) $data['workplace_id'])) throw ValidationException::withMessages(['workplace_id'=>'Bu işyerinde bugün göreviniz yok. Yöneticinizle iletişime geçin.']);
         $record=Ek2Record::create($konum+['doctor_id'=>auth()->id(),'workplace_id'=>$data['workplace_id'],'tc_kimlik_no'=>$data['tc_kimlik_no'],'first_name'=>$data['first_name'],'last_name'=>$data['last_name'],'front_path'=>$front,'back_path'=>$back,'status'=>'completed','completed_at'=>now()]+($uyariNot?['review_note'=>$uyariNot]:[]));
         AuditLog::kaydet('kayit_olustur',$record);
         if ($uyariParca) AuditLog::kaydet('kalite_uyari_gecildi',$record,['on'=>$uyariOn,'arka'=>$uyariArka]);
