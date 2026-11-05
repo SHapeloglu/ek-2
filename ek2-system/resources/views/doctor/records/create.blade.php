@@ -26,7 +26,7 @@
 @foreach($errors->all() as $e)<p class="err">{{ $e }}</p>@endforeach</form></div></div>
 <script>
 const steps=[...document.querySelectorAll('.step')], bar=document.getElementById('bar'); let i=0;
-function update(){steps.forEach((s,n)=>s.classList.toggle('active',n===i));bar.style.width=((i+1)/steps.length*100)+'%';scrollTo(0,0);if(typeof taslakKaydet==='function')taslakKaydet()}
+function update(){steps.forEach((s,n)=>s.classList.toggle('active',n===i));bar.style.width=((i+1)/steps.length*100)+'%';scrollTo(0,0);const gi=steps[i].querySelector("input:not([type=file]):not([type=hidden])");if(gi)gi.focus({preventScroll:true});if(typeof taslakKaydet==='function')taslakKaydet()}
 function tcGecerli(t){if(!/^[1-9][0-9]{10}$/.test(t))return false;const d=[...t].map(Number),tek=d[0]+d[2]+d[4]+d[6]+d[8],cift=d[1]+d[3]+d[5]+d[7];return ((tek*7-cift)%10+10)%10===d[9]&&d.slice(0,10).reduce((a,b)=>a+b,0)%10===d[10]}
 const tcInput=document.querySelector('[name=tc_kimlik_no]');tcInput.addEventListener('input',()=>tcInput.setCustomValidity(''));
 function validStep(){const fields=[...steps[i].querySelectorAll('input[required],select[required]')];if(fields.includes(tcInput))tcInput.setCustomValidity(tcGecerli(tcInput.value)?'':'Geçerli bir T.C. Kimlik No girin.');return fields.every(f=>f.reportValidity())}
