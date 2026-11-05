@@ -14,9 +14,12 @@
 .camera-input{position:relative;text-align:center;padding:22px}
 .camera-input .cam-btn{display:block;pointer-events:none;padding:34px 14px;border-radius:14px;background:#1f5eff;color:#fff;font-weight:700;font-size:1.3rem}
 .camera-input input[type=file]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:2}
+.wrap.mobile .wp-list{display:grid;gap:12px}
+.wrap.mobile .wp{width:100%;background:#fff;color:#1f2937;border:2px solid #1f5eff;font-size:1.3rem}
+.wrap.mobile .wp.secili{background:#1f5eff;color:#fff}
 .camera-input .preview{max-width:100%;margin-top:14px;border-radius:10px}
 </style>
-<div class="step active"><h2>1. İşyeri</h2>@if($workplaces->isEmpty())<p class="err">Bugün size tanımlı bir görev yok. Yöneticinizle iletişime geçin.</p>@endif<select name="workplace_id" required><option value="">İşyeri seçin</option>@foreach($workplaces as $w)<option value="{{ $w->id }}" @selected(old('workplace_id')==$w->id)>{{ $w->name }}</option>@endforeach</select><br><br><button type="button" class="btn next">Devam</button></div>
+<div class="step active"><h2>1. İşyeri</h2>@if($workplaces->isEmpty())<p class="err">Bugün size tanımlı bir görev yok. Yöneticinizle iletişime geçin.</p>@endif<input type="hidden" name="workplace_id" value="{{ old('workplace_id') }}"><div class="wp-list">@foreach($workplaces as $w)<button type="button" class="btn wp" data-id="{{ $w->id }}">{{ $w->name }}</button>@endforeach</div><p class="err" id="wpErr" hidden>Lütfen bir işyeri seçin.</p></div>
 <div class="step"><h2>2. TC Kimlik No</h2><input inputmode="numeric" pattern="[0-9]{11}" maxlength="11" name="tc_kimlik_no" value="{{ old('tc_kimlik_no') }}" autocomplete="off" required placeholder="11 haneli TC Kimlik No"><br><br><button type="button" class="btn next">Devam</button></div>
 <div class="step"><h2>3. Hasta Adı</h2><input name="first_name" value="{{ old('first_name') }}" required autocomplete="off" autocapitalize="words" enterkeyhint="next" placeholder="Ad"><p class="muted">Mikrofon için klavyede 🎤 tuşunu kullanın.</p><br><br><button type="button" class="btn next">Devam</button></div>
 <div class="step"><h2>4. Hasta Soyadı</h2><input name="last_name" value="{{ old('last_name') }}" required autocomplete="off" autocapitalize="words" enterkeyhint="next" placeholder="Soyad"><p class="muted">Mikrofon için klavyede 🎤 tuşunu kullanın.</p><br><br><button type="button" class="btn next">Devam</button></div>
@@ -26,11 +29,12 @@
 @foreach($errors->all() as $e)<p class="err">{{ $e }}</p>@endforeach</form></div></div>
 <script>
 const steps=[...document.querySelectorAll('.step')], bar=document.getElementById('bar'); let i=0;
-function update(){steps.forEach((s,n)=>s.classList.toggle('active',n===i));bar.style.width=((i+1)/steps.length*100)+'%';scrollTo(0,0);if(typeof taslakKaydet==='function')taslakKaydet()}
+function update(){steps.forEach((s,n)=>s.classList.toggle('active',n===i));bar.style.width=((i+1)/steps.length*100)+'%';scrollTo(0,0);const gi=steps[i].querySelector("input:not([type=file]):not([type=hidden])");if(gi)gi.focus({preventScroll:true});if(typeof taslakKaydet==='function')taslakKaydet()}
+document.querySelectorAll('.wp').forEach(b=>b.addEventListener('click',()=>{document.querySelector('[name=workplace_id]').value=b.dataset.id;document.querySelectorAll('.wp').forEach(x=>x.classList.toggle('secili',x===b));document.getElementById('wpErr').hidden=true;i=1;update()}));
 function tcGecerli(t){if(!/^[1-9][0-9]{10}$/.test(t))return false;const d=[...t].map(Number),tek=d[0]+d[2]+d[4]+d[6]+d[8],cift=d[1]+d[3]+d[5]+d[7];return ((tek*7-cift)%10+10)%10===d[9]&&d.slice(0,10).reduce((a,b)=>a+b,0)%10===d[10]}
 const tcInput=document.querySelector('[name=tc_kimlik_no]');tcInput.addEventListener('input',()=>tcInput.setCustomValidity(''));
 function validStep(){const fields=[...steps[i].querySelectorAll('input[required],select[required]')];if(fields.includes(tcInput))tcInput.setCustomValidity(tcGecerli(tcInput.value)?'':'Geçerli bir T.C. Kimlik No girin.');return fields.every(f=>f.reportValidity())}
-document.querySelectorAll('.next').forEach(b=>b.addEventListener('click',()=>{if(!validStep())return;if(i===steps.length-2){const w=document.querySelector('[name=workplace_id]'),wn=w.options[w.selectedIndex].text,f=document.querySelector('[name=first_name]').value,l=document.querySelector('[name=last_name]').value,t=document.querySelector('[name=tc_kimlik_no]').value;document.getElementById('summary').textContent=`${wn} • ${f} ${l} • TC ${t.slice(0,2)}*******${t.slice(-2)} • Ön ve arka fotoğraf hazır.`}i=Math.min(i+1,steps.length-1);update();const fi=steps[i].querySelector('input[type=file]');if(fi&&!fi.files.length)fi.click()}));
+document.querySelectorAll('.next').forEach(b=>b.addEventListener('click',()=>{if(!validStep())return;if(i===steps.length-2){const wn=(document.querySelector('.wp.secili')||{textContent:''}).textContent.trim(),f=document.querySelector('[name=first_name]').value,l=document.querySelector('[name=last_name]').value,t=document.querySelector('[name=tc_kimlik_no]').value;document.getElementById('summary').textContent=`${wn} • ${f} ${l} • TC ${t.slice(0,2)}*******${t.slice(-2)} • Ön ve arka fotoğraf hazır.`}i=Math.min(i+1,steps.length-1);update();const fi=steps[i].querySelector('input[type=file]');if(fi&&!fi.files.length)fi.click()}));
 steps.forEach((s,n)=>{if(!n)return;const g=document.createElement('button');g.type='button';g.className='btn geri';g.textContent='← Geri';g.style.cssText='margin-top:10px;background:transparent;color:inherit;border:1px solid currentColor';g.addEventListener('click',()=>{i=Math.max(i-1,0);update()});s.appendChild(g)});
 for(const [id,pid,sayfa,alan] of [['front','frontPreview',1,'kalite_uyari_on'],['back','backPreview',2,'kalite_uyari_arka']]) document.getElementById(id).addEventListener('change',e=>{const file=e.target.files[0];ek2Kalite(e.target,sayfa,alan);if(!file)return;const img=document.getElementById(pid);img.src=URL.createObjectURL(file);img.hidden=false});
 // Fotoğrafta GPS yoksa (ör. iPhone tarayıcıdan yüklerken siler) yedek: telefonun konumu; izin verilmezse kayıt yine yapılır
@@ -45,5 +49,6 @@ document.querySelectorAll('[name=workplace_id],[name=first_name],[name=last_name
 document.querySelectorAll('[name=workplace_id]').forEach(e=>e.addEventListener('change',taslakKaydet));
 document.getElementById('wizard').addEventListener('submit',()=>{try{sessionStorage.removeItem(TASLAK)}catch(e){}});
 taslakYukle();
+document.querySelectorAll('.wp').forEach(x=>x.classList.toggle('secili',x.dataset.id===document.querySelector('[name=workplace_id]').value));
 update();
 </script>@include('doctor._kalite')@endsection
