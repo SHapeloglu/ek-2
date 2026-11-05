@@ -1,4 +1,19 @@
-@extends('layouts.base') @section('body')<div class="wrap mobile"><div class="top"><div><a href="{{ route('doctor.dashboard') }}">← Ana Sayfa</a><h1>EK-2'lerim</h1></div><a class="btn" style="width:auto" href="{{ route('doctor.records.create') }}">+ Yeni</a></div>@if(session('ok'))<p class="ok">{{ session('ok') }}</p>@endif
+@extends('layouts.base') @section('body')<style>
+.wrap.mobile{font-size:1.2rem;padding:18px}
+.wrap.mobile h1{font-size:2rem;margin:10px 0}
+.wrap.mobile a{font-size:1.15rem}
+.wrap.mobile .muted{font-size:1.1rem;line-height:1.5}
+.wrap.mobile .card{padding:18px;margin-bottom:12px}
+.wrap.mobile input,.wrap.mobile select{font-size:1.25rem;min-height:66px!important;padding:14px!important;border-radius:12px}
+.wrap.mobile .btn{min-height:66px!important;font-size:1.25rem!important;padding:14px 22px!important;border-radius:14px;line-height:1.2}
+.wrap.mobile form[method=get] .btn{min-width:110px}
+.wrap.mobile .top{gap:10px}
+.wrap.mobile a.card{display:block;padding:20px 18px;margin-bottom:14px}
+.wrap.mobile a.card strong{display:block;font-size:1.5rem;margin-bottom:6px}
+.wrap.mobile a.card div,.wrap.mobile a.card span{font-size:1.1rem;line-height:1.5;margin-top:4px}
+.wrap.mobile a.card .err{font-size:1.1rem;font-weight:700}
+.wrap.mobile .grid{gap:14px}
+</style><div class="wrap mobile"><div class="top"><div><a href="{{ route('doctor.dashboard') }}">← Ana Sayfa</a><h1>EK-2'lerim</h1></div><a class="btn" style="width:auto" href="{{ route('doctor.records.create') }}">+ Yeni</a></div>@if(session('ok'))<p class="ok">{{ session('ok') }}</p>@endif
 <form method="get" action="{{ route('doctor.records.index') }}" style="display:flex;gap:8px;margin-bottom:12px">@if($eksikMi)<input type="hidden" name="eksik" value="1">@endif @if(request('sira'))<input type="hidden" name="sira" value="{{ request('sira') }}">@endif @if($durum!=='aktif')<input type="hidden" name="durum" value="{{ $durum }}">@endif<input type="search" name="q" value="{{ request('q') }}" placeholder="Ad, soyad ya da TC ile ara" autocomplete="off"><button class="btn" style="width:auto;min-height:0">Ara</button></form>
 <form method="get" action="{{ route('doctor.records.index') }}" style="margin-bottom:12px">@if($eksikMi)<input type="hidden" name="eksik" value="1">@endif @if(request('q'))<input type="hidden" name="q" value="{{ request('q') }}">@endif<label class="muted">Göster</label><select name="durum" onchange="this.form.submit()" style=""><option value="aktif" @selected($durum==='aktif')>Aktif</option><option value="pasif" @selected($durum==='pasif')>Pasif</option><option value="tumu" @selected($durum==='tumu')>Tümü</option></select><label class="muted">Sıralama</label><select name="sira" onchange="this.form.submit()" style="">@foreach(App\Models\Ek2Record::SIRALAMALAR as $k=>$v)<option value="{{ $k }}" @selected(request('sira','yeni')===$k)>{{ $v }}</option>@endforeach</select><noscript><button class="btn light">Sırala</button></noscript></form>@if(request('q'))<p class="muted">"{{ request('q') }}" için {{ $records->total() }} sonuç · <a href="{{ route('doctor.records.index',array_filter(['eksik'=>$eksikMi?1:null,'durum'=>$durum!=='aktif'?$durum:null])) }}">aramayı temizle</a></p>@endif
 @if($eksikMi)<a class="btn light" href="{{ route('doctor.records.index',array_filter(['q'=>request('q'),'sira'=>request('sira'),'durum'=>$durum!=='aktif'?$durum:null])) }}">Tümünü göster</a><p class="muted">Sayfası eksik ya da yeniden çekilmesi gereken {{ $eksikSayi }} kayıt.</p>@else<a class="btn {{ $eksikSayi ? '' : 'light' }}" href="{{ route('doctor.records.index',array_filter(['eksik'=>1,'q'=>request('q'),'sira'=>request('sira'),'durum'=>$durum!=='aktif'?$durum:null])) }}">Eksikleri listele ({{ $eksikSayi }})</a><br><br>@endif

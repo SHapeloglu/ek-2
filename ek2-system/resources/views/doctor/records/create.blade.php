@@ -1,11 +1,27 @@
 @extends('layouts.base') @section('body')<div class="wrap mobile"><a href="{{ route('doctor.dashboard') }}">← Vazgeç</a><h1>Yeni EK-2</h1><div class="progress"><div id="bar"></div></div><div class="card"><form id="wizard" method="post" enctype="multipart/form-data" action="{{ route('doctor.records.store') }}">@csrf
 <input type="hidden" name="konum_lat"><input type="hidden" name="konum_lon"><input type="hidden" name="konum_dogruluk"><input type="hidden" name="kalite_uyari_on"><input type="hidden" name="kalite_uyari_arka">
+<style>
+.wrap.mobile{font-size:1.2rem;padding:18px}
+.wrap.mobile h1{font-size:2rem;margin:12px 0}
+.wrap.mobile h2{font-size:1.6rem;margin:6px 0 14px}
+.wrap.mobile a{font-size:1.15rem;display:inline-block;padding:8px 0}
+.wrap.mobile .muted{font-size:1.1rem;line-height:1.5}
+.wrap.mobile .card{padding:18px}
+.wrap.mobile input,.wrap.mobile select{font-size:1.25rem;min-height:68px;padding:16px;border-radius:12px}
+.wrap.mobile .progress{height:12px}
+.wrap.mobile .btn,.wrap.mobile .next,.wrap.mobile .geri{min-height:68px;font-size:1.25rem;padding:14px 20px;border-radius:14px;margin-top:6px}
+.wrap.mobile .geri{min-height:58px;font-size:1.15rem}
+.camera-input{position:relative;text-align:center;padding:22px}
+.camera-input .cam-btn{display:block;pointer-events:none;padding:34px 14px;border-radius:14px;background:#1f5eff;color:#fff;font-weight:700;font-size:1.3rem}
+.camera-input input[type=file]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:2}
+.camera-input .preview{max-width:100%;margin-top:14px;border-radius:10px}
+</style>
 <div class="step active"><h2>1. İşyeri</h2>@if($workplaces->isEmpty())<p class="err">Tanımlı aktif işyeri yok; yöneticiden işyeri eklemesini isteyin.</p>@endif<select name="workplace_id" required><option value="">İşyeri seçin</option>@foreach($workplaces as $w)<option value="{{ $w->id }}" @selected(old('workplace_id')==$w->id)>{{ $w->name }}</option>@endforeach</select><br><br><button type="button" class="btn next">Devam</button></div>
 <div class="step"><h2>2. TC Kimlik No</h2><input inputmode="numeric" pattern="[0-9]{11}" maxlength="11" name="tc_kimlik_no" value="{{ old('tc_kimlik_no') }}" autocomplete="off" required placeholder="11 haneli TC Kimlik No"><br><br><button type="button" class="btn next">Devam</button></div>
 <div class="step"><h2>3. Hasta Adı</h2><input name="first_name" value="{{ old('first_name') }}" required autocomplete="off" placeholder="Ad"><br><br><button type="button" class="btn next">Devam</button></div>
 <div class="step"><h2>4. Hasta Soyadı</h2><input name="last_name" value="{{ old('last_name') }}" required autocomplete="off" placeholder="Soyad"><br><br><button type="button" class="btn next">Devam</button></div>
-<div class="step"><h2>5. EK-2 Ön Sayfa</h2><p class="muted">Belgeyi düz bir zeminde, tamamı görünecek şekilde çekin.</p><div class="camera-input"><input id="front" type="file" name="front_image" accept="image/jpeg" capture="environment" required><img id="frontPreview" class="preview" hidden></div><br><button type="button" class="btn next">Fotoğrafı Kullan</button></div>
-<div class="step"><h2>6. EK-2 Arka Sayfa</h2><div class="camera-input"><input id="back" type="file" name="back_image" accept="image/jpeg" capture="environment" required><img id="backPreview" class="preview" hidden></div><br><button type="button" class="btn next">Önizlemeye Geç</button></div>
+<div class="step"><h2>5. EK-2 Ön Sayfa</h2><p class="muted">Belgeyi düz bir zeminde, tamamı görünecek şekilde çekin.</p><div class="camera-input"><span class="cam-btn">📷 Ön sayfayı çek</span><input id="front" type="file" name="front_image" accept="image/jpeg" capture="environment" required><img id="frontPreview" class="preview" hidden></div><br><button type="button" class="btn next">Fotoğrafı Kullan</button></div>
+<div class="step"><h2>6. EK-2 Arka Sayfa</h2><div class="camera-input"><span class="cam-btn">📷 Arka sayfayı çek</span><input id="back" type="file" name="back_image" accept="image/jpeg" capture="environment" required><img id="backPreview" class="preview" hidden></div><br><button type="button" class="btn next">Önizlemeye Geç</button></div>
 <div class="step"><h2>7. Kontrol ve Yükle</h2><div id="summary" class="muted"></div><br><button class="btn" type="submit">Kaydı Bitir ve Yükle</button></div>
 @foreach($errors->all() as $e)<p class="err">{{ $e }}</p>@endforeach</form></div></div>
 <script>
@@ -14,7 +30,7 @@ function update(){steps.forEach((s,n)=>s.classList.toggle('active',n===i));bar.s
 function tcGecerli(t){if(!/^[1-9][0-9]{10}$/.test(t))return false;const d=[...t].map(Number),tek=d[0]+d[2]+d[4]+d[6]+d[8],cift=d[1]+d[3]+d[5]+d[7];return ((tek*7-cift)%10+10)%10===d[9]&&d.slice(0,10).reduce((a,b)=>a+b,0)%10===d[10]}
 const tcInput=document.querySelector('[name=tc_kimlik_no]');tcInput.addEventListener('input',()=>tcInput.setCustomValidity(''));
 function validStep(){const fields=[...steps[i].querySelectorAll('input[required],select[required]')];if(fields.includes(tcInput))tcInput.setCustomValidity(tcGecerli(tcInput.value)?'':'Geçerli bir T.C. Kimlik No girin.');return fields.every(f=>f.reportValidity())}
-document.querySelectorAll('.next').forEach(b=>b.addEventListener('click',()=>{if(!validStep())return;if(i===steps.length-2){const w=document.querySelector('[name=workplace_id]'),wn=w.options[w.selectedIndex].text,f=document.querySelector('[name=first_name]').value,l=document.querySelector('[name=last_name]').value,t=document.querySelector('[name=tc_kimlik_no]').value;document.getElementById('summary').textContent=`${wn} • ${f} ${l} • TC ${t.slice(0,2)}*******${t.slice(-2)} • Ön ve arka fotoğraf hazır.`}i=Math.min(i+1,steps.length-1);update()}));
+document.querySelectorAll('.next').forEach(b=>b.addEventListener('click',()=>{if(!validStep())return;if(i===steps.length-2){const w=document.querySelector('[name=workplace_id]'),wn=w.options[w.selectedIndex].text,f=document.querySelector('[name=first_name]').value,l=document.querySelector('[name=last_name]').value,t=document.querySelector('[name=tc_kimlik_no]').value;document.getElementById('summary').textContent=`${wn} • ${f} ${l} • TC ${t.slice(0,2)}*******${t.slice(-2)} • Ön ve arka fotoğraf hazır.`}i=Math.min(i+1,steps.length-1);update();const fi=steps[i].querySelector('input[type=file]');if(fi&&!fi.files.length)fi.click()}));
 steps.forEach((s,n)=>{if(!n)return;const g=document.createElement('button');g.type='button';g.className='btn geri';g.textContent='← Geri';g.style.cssText='margin-top:10px;background:transparent;color:inherit;border:1px solid currentColor';g.addEventListener('click',()=>{i=Math.max(i-1,0);update()});s.appendChild(g)});
 for(const [id,pid,sayfa,alan] of [['front','frontPreview',1,'kalite_uyari_on'],['back','backPreview',2,'kalite_uyari_arka']]) document.getElementById(id).addEventListener('change',e=>{const file=e.target.files[0];ek2Kalite(e.target,sayfa,alan);if(!file)return;const img=document.getElementById(pid);img.src=URL.createObjectURL(file);img.hidden=false});
 // Fotoğrafta GPS yoksa (ör. iPhone tarayıcıdan yüklerken siler) yedek: telefonun konumu; izin verilmezse kayıt yine yapılır
