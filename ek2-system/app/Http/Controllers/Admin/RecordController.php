@@ -3,6 +3,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Ek2Record;
+use App\Models\User;
 use App\Models\Workplace;
 use App\Rules\TcKimlikNo;
 use Illuminate\Http\Request;
@@ -25,11 +26,13 @@ class RecordController extends Controller {
     public function edit(Ek2Record $record){
         abort_if($record->status==='cancelled',403,'Pasif kayıt düzeltilemez; önce aktife alın.');
         $workplaces=Workplace::where('is_active',true)->orWhere('id',$record->workplace_id)->orderBy('name')->get(['id','name']);
-        return view('admin.records.edit',compact('record','workplaces'));
+        $doctors=User::where('role','doctor')->where(fn($q)=>$q->where('is_active',true)->orWhere('id',$record->doctor_id))->orderBy('name')->get(['id','name','surname']);
+        return view('admin.records.edit',compact('record','workplaces','doctors'));
     }
     public function update(Request $request, Ek2Record $record){
         abort_if($record->status==='cancelled',403,'Pasif kayıt düzeltilemez; önce aktife alın.');
         $data=$request->validate([
+            'doctor_id'=>['required','integer',Rule::exists('users','id')->where(fn($q)=>$q->where('role','doctor')->where(fn($q2)=>$q2->where('is_active',true)->orWhere('id',$record->doctor_id)))],
             'workplace_id'=>['required','integer',Rule::exists('workplaces','id')->where(fn($q)=>$q->where('is_active',true)->orWhere('id',$record->workplace_id))],
             'tc_kimlik_no'=>['required','digits:11',new TcKimlikNo],'first_name'=>['required','string','max:100'],'last_name'=>['required','string','max:100'],
             'exam_date'=>['nullable','date','before_or_equal:today','after:1990-01-01'],'note'=>['required','string','max:500'],
