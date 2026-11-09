@@ -20,7 +20,22 @@ class RecordController extends Controller {
     public function show(Ek2Record $record){
         AuditLog::kaydet('kayit_goruntule',$record);
         $logs=AuditLog::with('user')->where('entity_type','ek2_records')->where('entity_id',$record->id)->latest('created_at')->limit(50)->get();
-        return view('admin.records.show',compact('record','logs'));
+        $doctors=$this->doktorlar($record);
+        return view('admin.records.show',compact('record','logs','doctors'));
+    }
+    private function doktorlar(Ek2Record $record){
+        return User::where('role','doctor')->where(fn($q)=>$q->where('is_active',true)->orWhere('id',$record->doctor_id))->orderBy('name')->get(['id','name','surname']);
+    }
+    public function changeDoctor(Request $request, Ek2Record $record){
+        abort_if($record->status==='cancelled',403,'Pasif kayıt düzeltilemez; önce aktife alın.');
+        $data=$request->validate([
+            'doctor_id'=>['required','integer',Rule::exists('users','id')->where(fn($q)=>$q->where('role','doctor')->where(fn($q2)=>$q2->where('is_active',true)->orWhere('id',$record->doctor_id)))],
+            'note'=>['required','string','max:500'],
+        ]);
+        if((int)$data['doctor_id']===(int)$record->doctor_id) return back()->withErrors(['doctor_id'=>'Doktor değişmedi.']);
+        $eski=$record->doctor_id; $record->update(['doctor_id'=>$data['doctor_id']]);
+        AuditLog::kaydet('doktor_degistir',$record,['eski'=>$eski,'yeni'=>(int)$data['doctor_id'],'not'=>$data['note']]);
+        return redirect()->route('admin.records.show',$record)->with('ok','Doktor değiştirildi.');
     }
     public function image(Ek2Record $record,string $side){ AuditLog::kaydet('foto_goruntule',$record,['sayfa'=>$side]); return $record->imageResponse($side); }
     public function edit(Ek2Record $record){

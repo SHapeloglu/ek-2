@@ -31,6 +31,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth','role:admin'])->group
     Route::delete('records/{record}',[AdminRecordController::class,'destroy'])->name('records.destroy');
     Route::post('records/{record}/rotate/{side}/{yon}',[AdminRecordController::class,'rotate'])->name('records.rotate');
     Route::post('records/{record}/retake',[AdminRecordController::class,'retake'])->name('records.retake');
+    Route::put('records/{record}/doktor',[AdminRecordController::class,'changeDoctor'])->name('records.doctor');
     Route::get('audit',[AuditController::class,'index'])->name('audit.index');
 });
 Route::prefix('app')->name('doctor.')->middleware(['auth','role:doctor'])->group(function(){
