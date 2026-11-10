@@ -86,11 +86,18 @@ class Ek2Record extends Model
     }
     /** Aynı kişinin (TC) diğer kayıtları */
     public function digerKayitlar() { return $this->tc_kimlik_no==='' ? collect() : static::with('workplace')->where('tc_kimlik_no',$this->tc_kimlik_no)->where('id','!=',$this->id)->orderByDesc('exam_date')->orderByDesc('created_at')->get(); }
-    public const SIRALAMALAR = ['yeni'=>'En yeni','eski'=>'En eski','ad'=>'Ada göre (A→Z)','ad_ters'=>'Ada göre (Z→A)','soyad'=>'Soyada göre (A→Z)'];
+    public const SIRALAMALAR = ['yeni'=>'En yeni','eski'=>'En eski','ad'=>'Ada göre (A→Z)','ad_ters'=>'Ada göre (Z→A)','soyad'=>'Soyada göre (A→Z)','doktor'=>'Doktora göre (A→Z)','doktor_ters'=>'Doktora göre (Z→A)','isyeri'=>'İşyerine göre (A→Z)','isyeri_ters'=>'İşyerine göre (Z→A)','muayene'=>'Muayene tarihi (eski→yeni)','muayene_ters'=>'Muayene tarihi (yeni→eski)'];
     // Türkçe alfabe sırası (Ç, Ğ, İ, Ö, Ş, Ü doğru yerde)
     public function scopeSirala($q, ?string $s) {
         $tr=fn($c,$y='asc')=>$q->orderByRaw("$c COLLATE utf8mb4_turkish_ci $y");
+        $t=$q->getModel()->getTable();
         return match ($s) {
+            'doktor'=>$q->orderByRaw("(SELECT surname FROM users WHERE users.id = $t.doctor_id) COLLATE utf8mb4_turkish_ci asc")->orderByRaw("(SELECT name FROM users WHERE users.id = $t.doctor_id) COLLATE utf8mb4_turkish_ci asc")->orderByDesc('id'),
+            'doktor_ters'=>$q->orderByRaw("(SELECT surname FROM users WHERE users.id = $t.doctor_id) COLLATE utf8mb4_turkish_ci desc")->orderByRaw("(SELECT name FROM users WHERE users.id = $t.doctor_id) COLLATE utf8mb4_turkish_ci desc")->orderByDesc('id'),
+            'isyeri'=>$q->orderByRaw("(SELECT name FROM workplaces WHERE workplaces.id = $t.workplace_id) COLLATE utf8mb4_turkish_ci asc")->orderByDesc('id'),
+            'isyeri_ters'=>$q->orderByRaw("(SELECT name FROM workplaces WHERE workplaces.id = $t.workplace_id) COLLATE utf8mb4_turkish_ci desc")->orderByDesc('id'),
+            'muayene'=>$q->orderBy('exam_date')->orderBy('id'),
+            'muayene_ters'=>$q->orderByDesc('exam_date')->orderByDesc('id'),
             'eski'=>$q->oldest()->orderBy('id'),
             'ad'=>$tr('first_name')->orderByRaw('last_name COLLATE utf8mb4_turkish_ci'),
             'ad_ters'=>$tr('first_name','desc')->orderByRaw('last_name COLLATE utf8mb4_turkish_ci desc'),
