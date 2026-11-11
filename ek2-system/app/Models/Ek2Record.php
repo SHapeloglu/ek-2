@@ -39,6 +39,7 @@ class Ek2Record extends Model
     public function scopeAra($q, ?string $s) {
         $s=trim((string)$s); if ($s==='') return $q;
         if (preg_match('/^\d+$/',$s)) return $q->where('tc_kimlik_no','like',$s.'%');
+        if (preg_match('/^tel(\d+)$/i',$s,$mm)) return $q->where('id',(int)$mm[1]); // kayıt no: tel95 → id 95
         $like='%'.addcslashes($s,'%_\\').'%';
         return $q->where(fn($q)=>$q->whereRaw("CONCAT(first_name,' ',last_name) COLLATE utf8mb4_turkish_ci LIKE ?",[$like])->orWhere('legacy_form_id','like',$like));
     }
